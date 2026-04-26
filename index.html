@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hex District Map</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d0d0d;--surface:#161616;--surface2:#1e1e1e;--border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.14);--text:#ede9e3;--muted:#7a7a72;--dim:#3a3a36;--accent:#d4bc7a}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:"DM Sans",sans-serif;overflow:hidden}
+#app{display:grid;grid-template-rows:50px 1fr;height:100vh}
+header{display:flex;align-items:center;border-bottom:1px solid var(--border);background:var(--surface);padding:0 16px;height:50px;overflow:hidden;gap:0}
+header h1{font-size:13px;font-weight:600;letter-spacing:.03em;margin-right:16px;white-space:nowrap}
+header .sub{font-size:11px;color:var(--muted);font-family:"DM Mono",monospace;margin-right:auto;white-space:nowrap}
+#party-bar{display:flex;align-items:center;gap:3px;overflow-x:auto;flex-shrink:0;padding:2px 0}
+.pbtn{display:flex;align-items:center;gap:5px;padding:3px 6px;border-radius:20px;border:1.5px solid transparent;cursor:pointer;font-size:11px;font-weight:500;font-family:"DM Sans",sans-serif;color:var(--muted);background:transparent;white-space:nowrap;user-select:none;transition:color .1s,background .1s,border-color .1s}
+.pbtn:hover{color:var(--text);background:var(--surface2)}
+.pbtn.active{color:var(--text);background:var(--surface2);border-color:var(--ac,#888)}
+.pbtn .sw{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.vsep{width:1px;height:20px;background:var(--border);margin:0 6px;flex-shrink:0}
+#clrbtn{font-size:11px;padding:3px 10px;border-radius:5px;border:1px solid var(--border2);background:transparent;cursor:pointer;color:var(--muted);font-family:"DM Sans",sans-serif;transition:all .12s;flex-shrink:0}
+#clrbtn:hover{color:var(--text);border-color:var(--muted)}
+#body{display:grid;grid-template-columns:1fr 185px;overflow:hidden;height:100%}
+#map-wrap{position:relative;overflow:hidden;background:var(--bg);cursor:crosshair}
+#map-canvas{display:block;position:absolute;top:0;left:0}
+#url-bar{display:none}
+#url-bar label{font-size:11px;color:var(--muted);white-space:nowrap}
+#url-input{flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:5px;padding:4px 8px;font-size:11px;color:var(--text);font-family:"DM Mono",monospace;min-width:0}
+#url-input:focus{outline:none;border-color:var(--accent)}
+#url-go{font-size:11px;padding:4px 10px;border-radius:5px;border:none;background:var(--accent);color:#000;cursor:pointer;font-family:"DM Sans",sans-serif;font-weight:500;white-space:nowrap;flex-shrink:0}
+#url-go:hover{opacity:.85}
+#url-status{font-size:10px;color:var(--muted);white-space:nowrap;min-width:60px}
+#sidebar{border-left:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column;overflow-y:auto;padding:14px 12px}
+.sh{font-size:10px;font-weight:500;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;font-family:"DM Mono",monospace;margin-bottom:10px}
+.rrow{display:flex;align-items:center;gap:6px;padding:3px 0;font-size:12px}
+.rsw{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.rname{flex:1;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rcount{font-family:"DM Mono",monospace;font-size:11px;color:var(--text);min-width:26px;text-align:right}
+.rrow.has .rname{color:var(--text)}
+.rrow.has .rcount{font-weight:500}
+#total{font-size:11px;color:var(--muted);font-family:"DM Mono",monospace;border-top:1px solid var(--border);padding-top:8px;margin-top:6px}
+#total strong{color:var(--text)}
+.majlabel{display:flex;justify-content:space-between;font-size:10px;color:var(--dim);font-family:"DM Mono",monospace;margin:8px 0 4px}
+.majtrack{height:3px;background:var(--surface2);border-radius:2px;overflow:hidden;margin-bottom:12px}
+.majfill{height:100%;border-radius:2px;background:var(--accent);transition:width .3s}
+.hint{font-size:10px;color:var(--dim);line-height:1.8;border-top:1px solid var(--border);padding-top:10px;margin-top:auto}
+#edit-btn{font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:none;cursor:pointer;color:var(--dim);font-family:"DM Mono",monospace;margin-top:6px;width:100%;transition:all .12s}
+#edit-btn:hover{color:var(--muted);border-color:var(--dim)}
+#tip{position:fixed;background:var(--surface);border:1px solid var(--border2);border-radius:7px;padding:10px 12px;font-size:12px;pointer-events:none;z-index:999;display:none;color:var(--text);box-shadow:0 6px 24px rgba(0,0,0,.6);min-width:160px;max-width:240px}
+#tip .tn{font-weight:600;margin-bottom:1px;font-size:13px}
+#tip .tregion{font-size:10px;color:var(--muted);margin-bottom:8px}
+#tip .thexgrid{display:grid;grid-template-columns:repeat(4,20px);gap:3px;margin-bottom:8px}
+#tip .tvotes{font-size:10px;color:var(--muted);font-family:"DM Mono",monospace;display:flex;flex-direction:column;gap:2px}
+#tip .tvrow{display:flex;justify-content:space-between;gap:12px}
+#tip .tvrow .tvcol{display:flex;align-items:center;gap:4px}
+#tip .tvrow .tvsw{width:7px;height:7px;border-radius:1px;flex-shrink:0}
+#tip .tvrow.other{color:var(--dim)}
+#modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;display:none;align-items:center;justify-content:center}
+#modal-overlay.open{display:flex}
+#modal{background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:20px;width:340px;max-height:80vh;overflow-y:auto}
+#modal h2{font-size:14px;font-weight:500;margin-bottom:14px}
+.per{display:grid;grid-template-columns:28px 1fr 28px;gap:8px;align-items:center;margin-bottom:8px}
+.per input[type=color]{width:28px;height:28px;border:none;background:none;cursor:pointer;border-radius:4px;padding:0}
+.per input[type=text]{background:var(--surface2);border:1px solid var(--border2);border-radius:5px;padding:5px 8px;font-size:12px;color:var(--text);font-family:"DM Sans",sans-serif;width:100%}
+.per button{background:none;border:1px solid var(--border2);border-radius:5px;color:var(--muted);cursor:pointer;font-size:14px;width:28px;height:28px;display:flex;align-items:center;justify-content:center}
+.per button:hover{color:var(--text);border-color:var(--muted)}
+#modal-footer{display:flex;gap:8px;margin-top:14px;justify-content:flex-end}
+#modal-footer button{padding:5px 14px;border-radius:6px;font-size:12px;cursor:pointer;font-family:"DM Sans",sans-serif}
+#modal-save{background:var(--accent);color:#000;border:none;font-weight:500}
+#modal-cancel{background:none;border:1px solid var(--border2);color:var(--muted)}
+#add-party-btn{background:none;border:1px dashed var(--border2);border-radius:5px;color:var(--muted);cursor:pointer;font-size:11px;padding:6px;width:100%;margin-top:4px;font-family:"DM Sans",sans-serif}
+#add-party-btn:hover{color:var(--text);border-color:var(--muted)}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>Hex District Map</h1>
+    <span class="sub" id="hdr-sub">loading from sheet…</span>
+    <div id="party-bar"></div>
+    <div class="vsep"></div>
+    <button id="clrbtn" onclick="clearAll()">Clear all</button>
+  </header>
+  <div id="body">
+    <div id="map-wrap">
+      <canvas id="map-canvas"></canvas>
+      <div id="url-bar">
+        <label>Image URL</label>
+        <input id="url-input" type="text" value="https://i.imgur.com/IYVjC5H.png" placeholder="https://…">
+        <button id="url-go" onclick="loadFromURL()">Load</button>
+        <span id="url-status"></span>
+      </div>
+    </div>
+    <div id="sidebar">
+      <div class="sh">Results</div>
+      <div id="results-list"></div>
+      <div id="total">—</div>
+      <div class="majlabel"><span>Majority</span><span id="maj-n">—</span></div>
+      <div class="majtrack"><div class="majfill" id="maj-fill" style="width:0%"></div></div>
+      <button id="edit-btn" onclick="openModal()">&#10002; Edit parties</button>
+      <div class="hint" style="margin-top:10px">
+        Pick a party above,<br>
+        click to assign a territory.<br>
+        All cells of that territory<br>
+        are assigned together.<br>
+        Right-click to clear.<br>
+        Scroll to zoom, middle-drag to pan.
+      </div>
+    </div>
+  </div>
+</div>
+<div id="modal-overlay">
+  <div id="modal">
+    <h2>Edit Parties</h2>
+    <div id="party-edit-list"></div>
+    <button id="add-party-btn" onclick="addParty()">+ Add party</button>
+    <div id="modal-footer">
+      <button id="modal-cancel" onclick="closeModal()">Cancel</button>
+      <button id="modal-save" onclick="saveModal()">Save</button>
+    </div>
+  </div>
+</div>
+<div id="tip">
+  <div class="tn" id="t-name"></div>
+  <div class="tregion" id="t-region"></div>
+  <div class="thexgrid" id="t-hexgrid"></div>
+  <div class="tvotes" id="t-votes"></div>
+  <div style="display:none" id="t-party"><div id="t-psw"></div><span id="t-pname"></span>
+  </div>
+</div>
+<script>
+const SQRT3 = Math.sqrt(3);
+const SCALE_X = 0.10;
+const SCALE_Y = 0.10 * 1.5 / SQRT3;
+const BLK = 40;
+const MIN_TERRITORY_PX = 80;
+
+const FILL_UNASSIGNED  = '#23232a';
+const STROKE_INTERNAL  = 'rgba(255,255,255,0.03)';
+const WIDTH_INTERNAL   = 1.0;
+const STROKE_BOUNDARY  = 'rgba(255,255,255,0.80)';
+const WIDTH_BOUNDARY   = 2.0;
+
+let PARTIES = [];
+
+// ── Google Sheets integration ─────────────────────────────────────────────
+const SHEET_ID = '1Sf_FElbmBA7-JCL9s0MB5wVRW-Gz4TviA5K_QJwPXDU';
+
+// Fetch sheet via Google Apps Script Web App — works from file: origin, no column limits
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyqzq7L0IBrq38iEpG2r5u2Z7wJuIx0FlK11F7FFFtneGQqUoqQ_xo2AvjjL7CQfHlO/exec';
+
+async function fetchSheet(sheetName) {
+  const url = `${APPS_SCRIPT_URL}?sheet=${encodeURIComponent(sheetName)}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Sheet fetch failed: ' + sheetName);
+  return res.json(); // already returns array of row objects keyed by header
+}
+
+function csvToObjects(text) {
+  const rows = parseCSV(text);
+  if (rows.length < 2) return [];
+  const headers = rows[0];
+  return rows.slice(1).map(row => {
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = row[i] !== undefined ? row[i] : ''; });
+    return obj;
+  });
+}
+
+function parseCSV(text) {
+  const rows = [];
+  let row = [], cur = '', inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i], nx = text[i+1];
+    if (inQ) {
+      if (ch === '"' && nx === '"') { cur += '"'; i++; }
+      else if (ch === '"') inQ = false;
+      else cur += ch;
+    } else {
+      if (ch === '"') inQ = true;
+      else if (ch === ',') { row.push(cur); cur = ''; }
+      else if (ch === '\r' && nx === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; i++; }
+      else if (ch === '\n' || ch === '\r') { row.push(cur); rows.push(row); row = []; cur = ''; }
+      else cur += ch;
+    }
+  }
+  if (cur || row.length) { row.push(cur); rows.push(row); }
+  return rows;
+}
+
+async function loadFromSheet() {
+  setStatus('loading sheet…');
+  try {
+    const [electionRows, partyRows, zoneRows] = await Promise.all([
+      fetchSheet('Election'),
+      fetchSheet('Parties'),
+      fetchSheet('Zones'),
+    ]);
+
+    // ── 1. Image URL from Election!B2 ─────────────────────────────────────
+    // opensheet uses row 1 as headers; row 2 is the first data row (index 0).
+    // Election!B2 = the value in column B of the first data row.
+    // We find whichever column in the first row contains a URL.
+    if (!electionRows.length) { setStatus('Election sheet empty', true); return; }
+    let imageUrl = '';
+    for (const val of Object.values(electionRows[0])) {
+      if ((val || '').trim().startsWith('http')) { imageUrl = val.trim(); break; }
+    }
+    if (!imageUrl) { setStatus('no image URL found in Election!B2', true); return; }
+
+    // ── 2. Parties from Parties! ──────────────────────────────────────────
+    // opensheet uses row 1 as column headers.
+    // The "Shorthand" column (col B) is what gets transposed into Zones as vote-share headers.
+    // Expected headers: Party | Shorthand | Summary | Hexcode | ...
+    if (!partyRows.length) { setStatus('Parties sheet empty', true); return; }
+    PARTIES = partyRows.map((row, i) => {
+      // Be flexible: find the first non-empty string column as name,
+      // and look for recognisable header names case-insensitively.
+      const keys = Object.keys(row);
+      // Find columns by content pattern rather than fixed names,
+      // in case header row shifts.
+      const nameKey    = keys.find(k => /party|name/i.test(k))    || keys[0];
+      const shortKey   = keys.find(k => /short|abbr|abbrev/i.test(k)) || keys[1];
+      const summaryKey = keys.find(k => /summary|desc/i.test(k));
+      const hexKey     = keys.find(k => /hex|colour|color/i.test(k));
+      const nationKey  = keys.find(k => /nation|country/i.test(k));
+      const intlKey    = keys.find(k => /intl|international|group/i.test(k));
+
+      const name    = (row[nameKey]    || '').trim();
+      const short   = (row[shortKey]   || '').trim();
+      const summary = summaryKey ? (row[summaryKey] || '').trim() : '';
+      const rawHex  = hexKey ? (row[hexKey] || '').trim().replace(/^#/, '') : '';
+      const nation  = nationKey ? (row[nationKey] || '').trim() : '';
+      const intlGrp = intlKey  ? (row[intlKey]   || '').trim() : '';
+      const color   = /^[0-9a-fA-F]{6}$/.test(rawHex) ? '#' + rawHex : '#888888';
+      return { id: 'p' + i, name, short, summary, color, nation, intlGrp };
+    }).filter(p => p.name);
+
+    // Build a shorthand → party lookup for vote-share matching
+    const partyByShort = {};
+    PARTIES.forEach(p => { if (p.short) partyByShort[p.short] = p; });
+
+    // ── 3. Zones from Zones! ──────────────────────────────────────────────
+    // Row 1 = headers. The "Zones" anchor word appears as the column header
+    // for the Region column (col A). Actual headers:
+    //   Region | Province | Population | Apportionment | Seats | Hexcode | Turnout | <party shorthands…>
+    //
+    // We find the FIXED columns by looking for them in the header keys,
+    // then treat everything else as party vote-share columns.
+    if (!zoneRows.length) { setStatus('Zones sheet empty', true); return; }
+
+    const zoneKeys = Object.keys(zoneRows[0]);
+
+    // Find each fixed column key case-insensitively, falling back to position
+    const findKey = (patterns, fallbackIdx) =>
+      zoneKeys.find(k => patterns.some(p => new RegExp(p, 'i').test(k.trim())))
+      || zoneKeys[fallbackIdx];
+
+    const regionKey = findKey(['region','zone'],         0);
+    const nameKey   = findKey(['province','name'],       1);
+    // skip population (col 2) and apportionment (col 3)
+    const seatsKey  = findKey(['seats'],                 4);
+    const hexKey    = findKey(['hex','colour','color'],  5);
+    const turnoutKey= findKey(['turnout'],               6);
+
+    // Fixed columns to exclude — vote-share cols are everything else
+    const FIXED_KEYS = new Set(
+      [regionKey, nameKey, seatsKey, hexKey, turnoutKey,
+       findKey(['pop'],2), findKey(['appor'],3)]
+      .filter(Boolean).map(k => k.trim())
+    );
+
+    // Vote-share column keys = party shorthands, in sheet order
+    const voteKeys = zoneKeys.filter(k => !FIXED_KEYS.has(k.trim()));
+
+    window.ZONES = zoneRows.map((row, i) => {
+      const region  = (row[regionKey] || '').trim();
+      const name    = (row[nameKey]   || '').trim();
+      const seats   = parseInt((row[seatsKey] || '1').replace(/,/g, '')) || 1;
+      const rawHex  = (row[hexKey]    || '').trim().replace(/^#/, '');
+      const color   = /^[0-9a-fA-F]{6}$/.test(rawHex) ? '#' + rawHex.toLowerCase() : null;
+      const turnout = parseFloat((row[turnoutKey] || '0').replace(/%/g, '')) || 0;
+
+      // Parse vote shares — column headers ARE the party shorthands
+      const votes = {};
+      let winner = null, winPct = 0;
+      voteKeys.forEach(k => {
+        const short = k.trim();
+        const raw = (row[k] || '0').trim();
+        const hasPercent = raw.includes('%');
+        const pct = (parseFloat(raw.replace(/%/g,'')) || 0) / (hasPercent ? 100 : 1);
+        votes[short] = pct;
+        if (pct > winPct) { winPct = pct; winner = short; }
+      });
+
+      return { id: 'z' + i, region, name, seats, color, votes, winner, winPct, turnout };
+    }).filter(z => z.name);
+
+    // ── 4. ZONE_DISPLAY: map image hexcode → fill colour + metadata ───────
+    // Winning party colour blended by margin strength.
+    // Strength: normalised between random-chance floor (1/n parties) and 70% ceiling.
+    const numParties = voteKeys.length || 1;
+    const floor      = 1 / numParties;
+    const ceil       = 0.70;
+
+    window.ZONE_DISPLAY = {};
+    window.ZONES.forEach(zone => {
+      if (!zone.color) return;
+      const party = zone.winner ? partyByShort[zone.winner] : null;
+
+      if (!party) {
+        window.ZONE_DISPLAY[zone.color] = { color: FILL_UNASSIGNED, party: null, zone };
+        return;
+      }
+
+      // Desaturate toward white: strength=1 → full party colour, strength=0 → white
+      const strength = Math.max(0, Math.min(1, (zone.winPct - floor) / (ceil - floor)));
+      const pr = parseInt(party.color.slice(1, 3), 16);
+      const pg = parseInt(party.color.slice(3, 5), 16);
+      const pb = parseInt(party.color.slice(5, 7), 16);
+      const t  = 0.25 + strength * 0.75; // min 25% colour even at narrowest win
+      const br = Math.round(255 + (pr - 255) * t);
+      const bg = Math.round(255 + (pg - 255) * t);
+      const bb = Math.round(255 + (pb - 255) * t);
+      const blended = '#' + [br, bg, bb].map(v => v.toString(16).padStart(2, '0')).join('');
+
+      window.ZONE_DISPLAY[zone.color] = { color: blended, party, zone };
+
+      // Pre-populate tState with winning party so results panel shows on load
+      tState[zone.color] = party.id;
+    });
+
+    // ── 5. Boot UI ────────────────────────────────────────────────────────
+    buildPartyBar();
+    selParty = PARTIES[0] ? PARTIES[0].id : null;
+    renderResults();
+
+    setStatus('loading image…');
+    document.getElementById('url-input').value = imageUrl;
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload  = () => processImage(img);
+    img.onerror = () => {
+      const i2 = new Image();
+      i2.onload  = () => processImage(i2);
+      i2.onerror = () => setStatus('image load failed', true);
+      i2.src = imageUrl;
+    };
+    img.src = imageUrl;
+
+  } catch(err) {
+    setStatus('error: ' + err.message, true);
+    console.error(err);
+  }
+}
+
+const tState = {};
+let selParty = null;
+let origColors = null;
+let GRID_COLS = 0, GRID_ROWS = 0;
+let territoryCount = 0;
+
+const canvas  = document.getElementById('map-canvas');
+const ctx     = canvas.getContext('2d');
+const mapWrap = document.getElementById('map-wrap');
+
+let r = 6, originX = 0, originY = 0, zoom = 1, panX = 0, panY = 0;
+
+function resizeCanvas() {
+  canvas.width  = mapWrap.clientWidth;
+  canvas.height = mapWrap.clientHeight;
+}
+
+function computeLayout() {
+  resizeCanvas();
+  if (!GRID_COLS || !GRID_ROWS) return;
+  const pad   = 24;
+  const gridW = GRID_COLS * 1.5 + 0.5;
+  const gridH = GRID_ROWS * SQRT3 + SQRT3 / 2;
+  const fitW  = (canvas.width  - pad * 2) / gridW;
+  const fitH  = (canvas.height - pad * 2) / gridH;
+  r = Math.max(1, Math.min(fitW, fitH));
+  originX = (canvas.width  - gridW * r) / 2;
+  originY = (canvas.height - gridH * r) / 2;
+  zoom = 1; panX = 0; panY = 0;
+}
+
+function cellCenter(col, row) {
+  const er = r * zoom;
+  return {
+    cx: originX + panX + col * 1.5 * er + er,
+    cy: originY + panY + row * SQRT3 * er + er * SQRT3 / 2 + (col % 2 === 1 ? er * SQRT3 / 2 : 0)
+  };
+}
+
+// Flat-top hex: the 6 neighbours, one per edge (edge i is between corner i and corner i+1)
+function getNeighbour(col, row, ei) {
+  // Canvas Y-down, flat-top hex, odd columns shift DOWN by √3/2·r
+  // Verified against actual cell centre positions for all col parities.
+  const odd = col % 2 === 1;
+  return [
+    [col + 1, odd ? row + 1 : row    ],  // edge 0: lower-right
+    [col,     row + 1                ],  // edge 1: below
+    [col - 1, odd ? row + 1 : row    ],  // edge 2: lower-left
+    [col - 1, odd ? row     : row - 1],  // edge 3: upper-left
+    [col,     row - 1                ],  // edge 4: above
+    [col + 1, odd ? row     : row - 1],  // edge 5: upper-right
+  ][ei];
+}
+
+function render() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#0d0d0d';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  if (!origColors) return;
+
+  const er = r * zoom;
+
+  // ── Pass 1: territory fills — trace outer boundary of each colour group ─────
+  // Collect all boundary edges per territory colour, then chain them into
+  // closed loops and fill each loop as a single polygon. No seams possible.
+  {
+    // Directed half-edge walk — builds directed edges and traces loops in one pass.
+    // Each boundary edge is stored as a DIRECTED edge: territory always on the LEFT.
+    // For a flat-top hex, edge ei goes from corner ei → corner (ei+1)%6.
+    // The territory is on the left when we walk in that direction if the hex is to our left.
+    // We use the directed edge map: startPtKey → [directed edge objects]
+    // Following directed edges naturally traces closed outer loops with no ambiguity.
+    // We already have edges as {x1,y1,x2,y2} — but they're undirected.
+    // We need to re-derive directed edges from the original hex grid scan.
+    // The directed boundary edge for hex (col,row) on edge ei goes:
+    //   corner ei → corner (ei+1)%6  (territory on LEFT = inside)
+    // This is already the correct winding for exterior boundary tracing.
+
+    const SNAP = 0.5;
+    function ptKey(x,y){ return Math.round(x/SNAP)+'_'+Math.round(y/SNAP); }
+    const coordOf = {};
+
+    // dirEdges[color]: map from startKey → [{endKey, x2, y2}]
+    const dirEdges = {};
+
+    for (let col = 0; col < GRID_COLS; col++) {
+      for (let row = 0; row < GRID_ROWS; row++) {
+        const hexA = origColors[row] && origColors[row][col];
+        if (!hexA) continue;
+        const {cx, cy} = cellCenter(col, row);
+        for (let ei = 0; ei < 6; ei++) {
+          const [nc, nr] = getNeighbour(col, row, ei);
+          const inBounds = nc >= 0 && nc < GRID_COLS && nr >= 0 && nr < GRID_ROWS;
+          const hexB = inBounds ? (origColors[nr] && origColors[nr][nc]) : null;
+          if (hexA === hexB) continue; // internal, skip
+
+          // Directed edge: corner ei → corner (ei+1)%6, territory (hexA) on left
+          const a1 = Math.PI/3 * ei;
+          const a2 = Math.PI/3 * ((ei+1)%6);
+          const x1 = cx + er*Math.cos(a1), y1 = cy + er*Math.sin(a1);
+          const x2 = cx + er*Math.cos(a2), y2 = cy + er*Math.sin(a2);
+          const k1 = ptKey(x1,y1), k2 = ptKey(x2,y2);
+          coordOf[k1] = {x:x1,y:y1};
+          coordOf[k2] = {x:x2,y:y2};
+
+          if (!dirEdges[hexA]) dirEdges[hexA] = {};
+          if (!dirEdges[hexA][k1]) dirEdges[hexA][k1] = [];
+          dirEdges[hexA][k1].push({key:k2,x:x2,y:y2});
+        }
+      }
+    }
+
+    // Walk directed edges into loops per colour
+    for (const [hexColor, startMap] of Object.entries(dirEdges)) {
+      const zd = window.ZONE_DISPLAY && window.ZONE_DISPLAY[hexColor];
+      const fillColor = zd ? zd.color : FILL_UNASSIGNED;
+
+      // Copy adjacency so we can consume edges
+      const remaining = {};
+      for (const [k,arr] of Object.entries(startMap)) remaining[k] = [...arr];
+
+      const loops = [];
+
+      for (const startKey of Object.keys(remaining)) {
+        while ((remaining[startKey]||[]).length > 0) {
+          const loop = [];
+          let curKey = startKey;
+          let safety = Object.keys(remaining).length * 6 + 10;
+
+          while (safety-- > 0) {
+            const nexts = remaining[curKey];
+            if (!nexts || nexts.length === 0) break;
+            const next = nexts.shift(); // consume the directed edge
+            loop.push(coordOf[curKey]);
+            if (next.key === startKey) break; // closed loop
+            curKey = next.key;
+          }
+
+          if (loop.length >= 3) loops.push(loop);
+        }
+      }
+
+      ctx.beginPath();
+      for (const loop of loops) {
+        ctx.moveTo(loop[0].x, loop[0].y);
+        for (let i = 1; i < loop.length; i++) ctx.lineTo(loop[i].x, loop[i].y);
+        ctx.closePath();
+      }
+      ctx.fillStyle = fillColor;
+      ctx.fill('evenodd');
+    }
+  }
+
+  // ── Pass 2: edges — deduplicated via a Set ────────────────────────────────
+  // For each edge between hex A (col,row) and hex B (nc,nr):
+  //   canonical key = "minCol,minRow,maxCol,maxRow" — but since col/row pairs
+  //   don't sort cleanly, encode as "col1:row1|col2:row2" with the smaller one first.
+  //
+  // For map-edge hexes (neighbour outside grid), key = "col,row|edge:i"
+  // This guarantees every edge is processed exactly once.
+
+  const seen    = new Set();
+  const internal  = [];  // [x1,y1,x2,y2, ...]
+  const boundary  = [];
+
+  for (let col = 0; col < GRID_COLS; col++) {
+    for (let row = 0; row < GRID_ROWS; row++) {
+      const hexA = origColors[row] && origColors[row][col];
+      if (!hexA) continue;
+      const {cx, cy} = cellCenter(col, row);
+      if (cx + er * 2 < 0 || cx - er * 2 > canvas.width)  continue;
+      if (cy + er * 2 < 0 || cy - er * 2 > canvas.height) continue;
+
+      for (let ei = 0; ei < 6; ei++) {
+        const [nc, nr] = getNeighbour(col, row, ei);
+        const inBounds = nc >= 0 && nc < GRID_COLS && nr >= 0 && nr < GRID_ROWS;
+
+        // Build a canonical key so each edge is only processed once
+        let key;
+        if (inBounds) {
+          // Sort the two hex coords to get a consistent key
+          const [c1, r1, c2, r2] = col < nc || (col === nc && row < nr)
+            ? [col, row, nc, nr]
+            : [nc, nr, col, row];
+          key = c1 + ',' + r1 + '|' + c2 + ',' + r2;
+        } else {
+          // Map boundary — unique to this hex+edge
+          key = col + ',' + row + '|e' + ei;
+        }
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        const hexB = inBounds ? (origColors[nr] && origColors[nr][nc]) : null;
+
+        // Corner indices for edge ei: corners ei and (ei+1)%6
+        const a1 = Math.PI / 3 * ei;
+        const a2 = Math.PI / 3 * ((ei + 1) % 6);
+        const x1 = cx + er * Math.cos(a1), y1 = cy + er * Math.sin(a1);
+        const x2 = cx + er * Math.cos(a2), y2 = cy + er * Math.sin(a2);
+
+        // Boundary = different territory hex on the other side (or map edge with no hex)
+        const isBoundary = hexA !== hexB;  // null !== hexA is always true (map edge)
+
+        if (isBoundary) {
+          boundary.push(x1, y1, x2, y2);
+        } else {
+          internal.push(x1, y1, x2, y2);
+        }
+      }
+    }
+  }
+
+  // Draw internal lines first (underneath)
+  if (internal.length) {
+    ctx.beginPath();
+    for (let i = 0; i < internal.length; i += 4) {
+      ctx.moveTo(internal[i], internal[i+1]);
+      ctx.lineTo(internal[i+2], internal[i+3]);
+    }
+    // Match external border scaling — same lineWidth, just lower opacity fading in with zoom
+    const internalAlpha = Math.max(0, Math.min(1, (zoom - 2) / 4));
+    ctx.strokeStyle = `rgba(255,255,255,${(internalAlpha * 0.12).toFixed(3)})`;
+    ctx.lineWidth   = WIDTH_BOUNDARY;
+    ctx.stroke();
+  }
+
+  // Draw territory boundaries on top
+  if (boundary.length) {
+    ctx.beginPath();
+    for (let i = 0; i < boundary.length; i += 4) {
+      ctx.moveTo(boundary[i], boundary[i+1]);
+      ctx.lineTo(boundary[i+2], boundary[i+3]);
+    }
+    ctx.strokeStyle = STROKE_BOUNDARY;
+    ctx.lineWidth   = WIDTH_BOUNDARY;
+    ctx.stroke();
+  }
+}
+
+// ── Hit test ──────────────────────────────────────────────────────────────
+function inHex(sx, sy, cx, cy, er) {
+  const dx = Math.abs(sx - cx), dy = Math.abs(sy - cy);
+  if (dx > er) return false;
+  if (dy > er * SQRT3 / 2) return false;
+  return er * SQRT3 / 2 - dy - (SQRT3 / 2) * (dx - er / 2) >= 0 || dx <= er / 2;
+}
+
+function toGrid(sx, sy) {
+  const er     = r * zoom;
+  const colEst = Math.floor((sx - originX - panX - er / 2) / (1.5 * er));
+  for (let dc = -1; dc <= 2; dc++) {
+    const col = colEst + dc;
+    if (col < 0 || col >= GRID_COLS) continue;
+    const {cx: cx0, cy: cy0} = cellCenter(col, 0);
+    const rowEst = Math.floor((sy - cy0 + er * SQRT3 / 2) / (SQRT3 * er));
+    for (let dr = -1; dr <= 1; dr++) {
+      const row = rowEst + dr;
+      if (row < 0 || row >= GRID_ROWS) continue;
+      if (!origColors || !origColors[row] || !origColors[row][col]) continue;
+      const {cx, cy} = cellCenter(col, row);
+      if (inHex(sx, sy, cx, cy, er)) return {col, row};
+    }
+  }
+  return null;
+}
+
+// ── Image processing ──────────────────────────────────────────────────────
+function processImage(img) {
+  const W = img.naturalWidth, H = img.naturalHeight;
+  setStatus('analysing\u2026');
+  const full = document.createElement('canvas');
+  full.width = W; full.height = H;
+  full.getContext('2d').drawImage(img, 0, 0);
+  const fullPx = full.getContext('2d').getImageData(0, 0, W, H).data;
+
+  const freq = {};
+  for (let i = 0; i < fullPx.length; i += 4) {
+    const rv = fullPx[i], gv = fullPx[i+1], bv = fullPx[i+2];
+    if (rv < BLK && gv < BLK && bv < BLK) continue;
+    const key = (rv << 16) | (gv << 8) | bv;
+    freq[key] = (freq[key] || 0) + 1;
+  }
+  const trueColors = Object.entries(freq)
+    .filter(([,n]) => n >= MIN_TERRITORY_PX)
+    .map(([k]) => { const ki=parseInt(k); return [(ki>>16)&0xff,(ki>>8)&0xff,ki&0xff]; });
+
+  const tcFlat = new Float32Array(trueColors.length * 3);
+  const tcHex  = [];
+  trueColors.forEach(([rv,gv,bv],i) => {
+    tcFlat[i*3]=rv; tcFlat[i*3+1]=gv; tcFlat[i*3+2]=bv;
+    tcHex.push('#'+[rv,gv,bv].map(v=>v.toString(16).padStart(2,'0')).join(''));
+  });
+
+  function snapToTrue(rv,gv,bv) {
+    let bestDist=Infinity, bestIdx=0;
+    for (let i=0; i<tcHex.length; i++) {
+      const dr=tcFlat[i*3]-rv, dg=tcFlat[i*3+1]-gv, db=tcFlat[i*3+2]-bv;
+      const d=dr*dr+dg*dg+db*db;
+      if (d<bestDist){bestDist=d;bestIdx=i;}
+    }
+    return tcHex[bestIdx];
+  }
+
+  const NW=Math.max(1,Math.round(W*SCALE_X)), NH=Math.max(1,Math.round(H*SCALE_Y));
+  const bw=W/NW, bh=H/NH;
+  GRID_COLS=NW; GRID_ROWS=NH;
+  origColors=[];
+  const uniqueHex=new Set();
+  Object.keys(tState).forEach(k=>delete tState[k]);
+
+  for (let row=0; row<NH; row++) {
+    origColors[row]=[];
+    for (let col=0; col<NW; col++) {
+      const sx=Math.min(W-1,Math.floor((col+0.5)*bw));
+      const sy=Math.min(H-1,Math.floor((row+0.5)*bh));
+      const idx=(sy*W+sx)*4;
+      let rv=fullPx[idx],gv=fullPx[idx+1],bv=fullPx[idx+2];
+      if (rv<BLK&&gv<BLK&&bv<BLK) {
+        let found=null;
+        for (const [ox,oy] of [[0.3,0.3],[0.7,0.3],[0.3,0.7],[0.7,0.7]]) {
+          const x2=Math.min(W-1,Math.floor(col*bw+ox*bw));
+          const y2=Math.min(H-1,Math.floor(row*bh+oy*bh));
+          const i2=(y2*W+x2)*4;
+          const r2=fullPx[i2],g2=fullPx[i2+1],b2=fullPx[i2+2];
+          if(!(r2<BLK&&g2<BLK&&b2<BLK)){found=[r2,g2,b2];break;}
+        }
+        if(!found){origColors[row][col]=null;continue;}
+        [rv,gv,bv]=found;
+      }
+      const snapped=snapToTrue(rv,gv,bv);
+      origColors[row][col]=snapped;
+      uniqueHex.add(snapped);
+    }
+  }
+
+  territoryCount=uniqueHex.size;
+  document.getElementById('hdr-sub').textContent=territoryCount+' territories \u00b7 '+NW+'\u00d7'+NH+' grid';
+  document.getElementById('total').textContent='0\u00a0/\u00a0'+territoryCount+' assigned';
+  document.getElementById('maj-n').textContent=Math.floor(territoryCount/2)+1;
+  setStatus('');
+  computeLayout(); renderResults(); render();
+}
+
+function setStatus(msg,err){
+  const el=document.getElementById('url-status');
+  el.textContent=msg; el.style.color=err?'#e63946':'var(--muted)';
+}
+function loadFromURL(){
+  const url=document.getElementById('url-input').value.trim(); if(!url)return;
+  setStatus('loading\u2026');
+  const img=new Image(); img.crossOrigin='anonymous';
+  img.onload=()=>processImage(img);
+  img.onerror=()=>{const i2=new Image();i2.onload=()=>processImage(i2);i2.onerror=()=>setStatus('load failed',true);i2.src=url;};
+  img.src=url;
+}
+function assignTerritory(hex,pid){
+  if(pid===null)delete tState[hex];else tState[hex]=pid;
+  renderResults();render();
+}
+canvas.addEventListener('click',function(e){
+  const rect=canvas.getBoundingClientRect();
+  const hit=toGrid(e.clientX-rect.left,e.clientY-rect.top);
+  if(!hit)return;
+  const hex=origColors[hit.row]&&origColors[hit.row][hit.col];
+  if(hex)assignTerritory(hex,selParty);
+});
+canvas.addEventListener('contextmenu',function(e){
+  e.preventDefault();
+  const rect=canvas.getBoundingClientRect();
+  const hit=toGrid(e.clientX-rect.left,e.clientY-rect.top);
+  if(!hit)return;
+  const hex=origColors[hit.row]&&origColors[hit.row][hit.col];
+  if(hex)assignTerritory(hex,null);
+});
+// ── Tooltip helpers ──────────────────────────────────────────────────────
+
+// Flat-top hexagon SVG path for a given radius
+function flatHexPath(r) {
+  const pts = [];
+  for (let i = 0; i < 6; i++) {
+    const a = Math.PI / 3 * i; // flat-top: 0° = right point
+    pts.push((r + r * Math.cos(a)).toFixed(2) + ',' + (r + r * Math.sin(a)).toFixed(2));
+  }
+  return 'M' + pts.join('L') + 'Z';
+}
+
+// Largest remainder (Hamilton) seat allocation
+// parties: [{id, color, votes}], totalSeats: int
+// returns [{id, color, seats}]
+function allocateSeats(parties, totalSeats) {
+  const total = parties.reduce((s, p) => s + p.votes, 0);
+  if (total <= 0 || totalSeats <= 0) return parties.map(p => ({ ...p, seats: 0 }));
+  const quotas = parties.map(p => ({ ...p, quota: p.votes / total * totalSeats }));
+  quotas.forEach(p => { p.seats = Math.floor(p.quota); p.rem = p.quota - p.seats; });
+  let remaining = totalSeats - quotas.reduce((s, p) => s + p.seats, 0);
+  quotas.sort((a, b) => b.rem - a.rem);
+  for (let i = 0; i < remaining; i++) quotas[i].seats++;
+  return quotas;
+}
+
+function renderTooltip(zone, zd) {
+  document.getElementById('t-name').textContent = zone.name;
+  document.getElementById('t-region').textContent = zone.region || '';
+
+  // ── Seat hex grid ──
+  const grid = document.getElementById('t-hexgrid');
+  grid.innerHTML = '';
+  const R = 10; // hex radius px (flat-top, so width = 2R, height = R*sqrt(3))
+  const W = R * 2, H = Math.round(R * Math.sqrt(3));
+
+  // Build party list from votes, filter <1% into Other
+  const voteEntries = Object.entries(zone.votes || {});
+  const hasVotes = voteEntries.some(([,pct]) => pct > 0);
+  const mainParties = [], otherVotes = { id: '__other__', name: 'Other', color: '#666677', votes: 0 };
+  voteEntries.forEach(([short, pct]) => {
+    if (pct < 0.01) { otherVotes.votes += pct; return; }
+    const party = PARTIES.find(p => p.short === short);
+    mainParties.push({ id: short, name: party ? party.name : short, color: party ? party.color : '#888', votes: pct });
+  });
+  mainParties.sort((a, b) => b.votes - a.votes);
+
+  // Allocate seats via largest remainder (or all grey if no votes yet)
+  const seatList = [];
+  if (hasVotes) {
+    const allocated = allocateSeats(mainParties, zone.seats);
+    allocated.sort((a, b) => b.seats - a.seats).forEach(p => {
+      for (let i = 0; i < p.seats; i++) seatList.push({ color: p.color, name: p.name });
+    });
+  } else {
+    // No vote data yet — show all seats as unallocated grey
+    for (let i = 0; i < zone.seats; i++) seatList.push({ color: '#44444f', name: 'No data' });
+  }
+
+  // Render flat-top hex SVGs in rows of max 4
+  const path = flatHexPath(R);
+  // Flat-top hex: width=2R, height=R*sqrt(3). Centre at (R,R*sqrt(3)/2).
+  seatList.forEach(seat => {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', '20'); svg.setAttribute('height', '18');
+    svg.setAttribute('viewBox', '-1 -1 22 20');
+    svg.style.cssText = 'display:block';
+    const title = document.createElementNS('http://www.w3.org/2000/svg','title');
+    title.textContent = seat.name; svg.appendChild(title);
+    // Flat-top hex centred at (10, 9), radius 9
+    const cx = 10, cy = 9, hr = 9;
+    const pts = Array.from({length:6},(_,i)=>{
+      const a = Math.PI/3*i;
+      return (cx+hr*Math.cos(a)).toFixed(2)+','+(cy+hr*Math.sin(a)).toFixed(2);
+    }).join(' ');
+    const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    poly.setAttribute('points', pts);
+    poly.setAttribute('fill', seat.color);
+    poly.setAttribute('stroke', 'rgba(0,0,0,0.3)');
+    poly.setAttribute('stroke-width', '1');
+    svg.appendChild(poly);
+    grid.appendChild(svg);
+  });
+
+  // ── Vote share list ──
+  const vlist = document.getElementById('t-votes');
+  vlist.innerHTML = '';
+  mainParties.forEach(p => {
+    const row = document.createElement('div'); row.className = 'tvrow';
+    const left = document.createElement('div'); left.className = 'tvcol';
+    const sw = document.createElement('div'); sw.className = 'tvsw'; sw.style.background = p.color;
+    const nm = document.createElement('span'); nm.textContent = p.id;
+    left.appendChild(sw); left.appendChild(nm);
+    const pct = document.createElement('span'); pct.textContent = (p.votes * 100).toFixed(1) + '%';
+    row.appendChild(left); row.appendChild(pct);
+    vlist.appendChild(row);
+  });
+  if (otherVotes.votes > 0) {
+    const row = document.createElement('div'); row.className = 'tvrow other';
+    const left = document.createElement('div'); left.className = 'tvcol';
+    const sw = document.createElement('div'); sw.className = 'tvsw'; sw.style.background = otherVotes.color;
+    const nm = document.createElement('span'); nm.textContent = 'Other';
+    left.appendChild(sw); left.appendChild(nm);
+    const pct = document.createElement('span'); pct.textContent = (otherVotes.votes * 100).toFixed(1) + '%';
+    row.appendChild(left); row.appendChild(pct);
+    vlist.appendChild(row);
+  }
+}
+
+canvas.addEventListener('mousemove',function(e){
+  const rect=canvas.getBoundingClientRect();
+  const hit=toGrid(e.clientX-rect.left,e.clientY-rect.top);
+  const tip=document.getElementById('tip');
+  if(hit&&origColors){
+    const hex=origColors[hit.row]&&origColors[hit.row][hit.col];
+    if(!hex){tip.style.display='none';return;}
+    const zd = window.ZONE_DISPLAY && window.ZONE_DISPLAY[hex];
+    const zone = zd ? zd.zone : null;
+    if (zone) {
+      renderTooltip(zone, zd);
+    } else {
+      document.getElementById('t-name').textContent = hex;
+      document.getElementById('t-region').textContent = '';
+      document.getElementById('t-hexgrid').innerHTML = '';
+      document.getElementById('t-votes').innerHTML = '';
+    }
+    tip.style.display='block';
+    tip.style.left=Math.min(e.clientX+14,window.innerWidth-210)+'px';
+    tip.style.top=Math.min(e.clientY-8,window.innerHeight-90)+'px';
+  }else tip.style.display='none';
+});
+canvas.addEventListener('mouseleave',()=>{document.getElementById('tip').style.display='none';});
+canvas.addEventListener('wheel',function(e){
+  e.preventDefault();
+  const rect=canvas.getBoundingClientRect(),mx=e.clientX-rect.left,my=e.clientY-rect.top;
+  const factor=e.deltaY>0?0.85:1.18,newZ=Math.max(0.3,Math.min(40,zoom*factor));
+  panX=mx-originX-(mx-originX-panX)*(newZ/zoom);
+  panY=my-originY-(my-originY-panY)*(newZ/zoom);
+  zoom=newZ;render();
+},{passive:false});
+let panning=false,px0=0,py0=0,panX0=0,panY0=0;
+canvas.addEventListener('mousedown',e=>{if(e.button===1){e.preventDefault();panning=true;px0=e.clientX;py0=e.clientY;panX0=panX;panY0=panY;}});
+window.addEventListener('mousemove',e=>{if(panning){panX=panX0+e.clientX-px0;panY=panY0+e.clientY-py0;render();}});
+window.addEventListener('mouseup',()=>{panning=false;});
+window.addEventListener('resize',()=>{computeLayout();render();});
+document.getElementById('url-input').addEventListener('keydown',e=>{if(e.key==='Enter')loadFromURL();});
+
+function renderResults(){
+  const zones = window.ZONES || [];
+  const totalSeats = zones.reduce((s, z) => s + z.seats, 0);
+  const zoneByHex = {};
+  zones.forEach(z => { if (z.color) zoneByHex[z.color.toLowerCase()] = z; });
+  const seatsByParty = {};
+  PARTIES.forEach(p => seatsByParty[p.id] = 0);
+  Object.entries(tState).forEach(([hex, pid]) => {
+    if (seatsByParty[pid] === undefined) return;
+    const zone = zoneByHex[hex.toLowerCase()];
+    seatsByParty[pid] += zone ? zone.seats : 1;
+  });
+  const assignedSeats = Object.values(seatsByParty).reduce((a, b) => a + b, 0);
+  const list = document.getElementById('results-list'); list.innerHTML = '';
+  [...PARTIES].sort((a, b) => seatsByParty[b.id] - seatsByParty[a.id]).forEach(p => {
+    const s = seatsByParty[p.id];
+    const row = document.createElement('div'); row.className = 'rrow' + (s > 0 ? ' has' : '');
+    const sw = document.createElement('div'); sw.className = 'rsw'; sw.style.background = p.color;
+    const nm = document.createElement('div'); nm.className = 'rname'; nm.textContent = p.short || p.name;
+    const ct = document.createElement('div'); ct.className = 'rcount'; ct.textContent = s || '';
+    row.appendChild(sw); row.appendChild(nm); row.appendChild(ct); list.appendChild(row);
+  });
+  const maj = Math.floor((totalSeats || 1) / 2) + 1;
+  document.getElementById('total').innerHTML = '<strong>' + assignedSeats + '</strong> / ' + (totalSeats || territoryCount) + ' seats';
+  document.getElementById('maj-n').textContent = maj;
+  document.getElementById('maj-fill').style.width = Math.min(100, assignedSeats / maj * 100) + '%';
+}
+function clearAll(){Object.keys(tState).forEach(k=>delete tState[k]);renderResults();render();}
+function buildPartyBar(){}
+let modalDraft=[];
+function openModal(){modalDraft=PARTIES.map(p=>Object.assign({},p));renderModalList();document.getElementById('modal-overlay').classList.add('open');}
+function closeModal(){document.getElementById('modal-overlay').classList.remove('open');}
+function renderModalList(){
+  const el=document.getElementById('party-edit-list');el.innerHTML='';
+  modalDraft.forEach((p,i)=>{
+    const row=document.createElement('div');row.className='per';
+    const ci=document.createElement('input');ci.type='color';ci.value=p.color;
+    ci.addEventListener('input',function(){modalDraft[i].color=this.value;});
+    const ni=document.createElement('input');ni.type='text';ni.value=p.name;ni.placeholder='Party name';
+    ni.addEventListener('input',function(){modalDraft[i].name=this.value;});
+    const db=document.createElement('button');db.textContent='\u00d7';
+    db.addEventListener('click',()=>{modalDraft.splice(i,1);renderModalList();});
+    row.appendChild(ci);row.appendChild(ni);row.appendChild(db);el.appendChild(row);
+  });
+}
+function addParty(){
+  const cols=['#ff595e','#ffca3a','#6a4c93','#1982c4','#8ac926','#ff924c','#c77dff','#06d6a0'];
+  modalDraft.push({id:'p'+Date.now(),name:'New Party',color:cols[modalDraft.length%cols.length]});renderModalList();
+}
+function saveModal(){PARTIES=modalDraft.map(p=>Object.assign({},p));closeModal();buildPartyBar();renderResults();render();}
+document.getElementById('modal-overlay').addEventListener('click',function(e){if(e.target===document.getElementById('modal-overlay'))closeModal();});
+
+resizeCanvas();render();loadFromSheet();
+</script>
+</body>
+</html>
