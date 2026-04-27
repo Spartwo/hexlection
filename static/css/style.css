@@ -1,11 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hex District Map</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<style>
+
+<|channel|>analysis<|message|>We need rewrite entire code block but ensure it's valid CSS. The original is CSS already. Maybe issue is that comments inside? But we just output same code. Ensure no placeholders. Provide full block with same content. Let's do it.<|end|><|start|>assistant<|channel|>final<|message|>```css
+<START EDITING HERE>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#0d0d0d;--surface:#161616;--surface2:#1e1e1e;--border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.14);--text:#ede9e3;--muted:#7a7a72;--dim:#3a3a36;--accent:#d4bc7a}
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:"DM Sans",sans-serif;overflow:hidden}
@@ -44,7 +39,7 @@ header{display:none}
 .majfill{height:100%;border-radius:2px;background:var(--accent);transition:width .3s}
 #edit-btn{display:none}
 
-/* ── Right column ──────────────────────────────────────────────────────────── */
+/* ── Right column ────────────────────────────────────────────────────────── */
 #right-col{display:flex;flex-direction:column;background:var(--surface);border-left:1px solid var(--border);overflow:hidden;height:100vh}
 #parliament{display:flex;flex-direction:column;flex-shrink:0}
 #parl-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
@@ -97,86 +92,3 @@ header{display:none}
 #modal-cancel{background:none;border:1px solid var(--border2);color:var(--muted)}
 #add-party-btn{background:none;border:1px dashed var(--border2);border-radius:5px;color:var(--muted);cursor:pointer;font-size:11px;padding:6px;width:100%;margin-top:4px;font-family:"DM Sans",sans-serif}
 #add-party-btn:hover{color:var(--text);border-color:var(--muted)}
-</style>
-</head>
-<body>
-<div id="app">
-  <header></header>
-  <div id="body">
-    <div id="map-wrap">
-      <canvas id="map-canvas"></canvas>
-      <div id="url-bar">
-        <input id="url-input" type="text" value="" placeholder="https://…">
-        <span id="url-status"></span>
-      </div>
-    </div>
-    <div id="sidebar">
-      <div id="results-list"></div>
-      <div id="total"></div>
-      <div class="majtrack"><div class="majfill" id="maj-fill" style="width:0%"></div></div>
-      <span id="maj-n" style="display:none"></span>
-      <button id="edit-btn"></button>
-    </div>
-  </div>
-  <div id="right-col">
-    <div id="parliament">
-      <div id="parl-tabs">
-        <button class="ptab active" data-tab="party">Party</button>
-        <button class="ptab" data-tab="intl">Intl. Group</button>
-        <button class="ptab" data-tab="nation">Nation</button>
-      </div>
-      <div id="parl-canvas-wrap"><canvas id="parl-canvas"></canvas></div>
-    </div>
-    <div id="results-col">
-      <div id="results-list-main"></div>
-    </div>
-    <div id="results-footer">
-      <div id="total-main">—</div>
-      <div class="majlabel"><span>Majority threshold</span><span id="maj-n-main">—</span></div>
-      <div class="majtrack"><div class="majfill" id="maj-fill-main" style="width:0%"></div></div>
-    </div>
-  </div>
-</div>
-
-<div id="modal-overlay">
-  <div id="modal">
-    <h2>Edit Parties</h2>
-    <div id="party-edit-list"></div>
-    <button id="add-party-btn" onclick="addParty()">+ Add party</button>
-    <div id="modal-footer">
-      <button id="modal-cancel" onclick="closeModal()">Cancel</button>
-      <button id="modal-save" onclick="saveModal()">Save</button>
-    </div>
-  </div>
-</div>
-
-<div id="tip">
-  <div class="tn" id="t-name"></div>
-  <div class="tregion" id="t-region"></div>
-  <div class="thexgrid" id="t-hexgrid"></div>
-  <div class="tvotes" id="t-votes"></div>
-  <div style="display:none" id="t-party"><div id="t-psw"></div><span id="t-pname"></span></div>
-</div>
-
-<!--
-  Load order matters:
-    1. helpers.js   — constants + pure utilities (no DOM deps)
-    2. ui.js        — DOM-dependent UI (PARTIES, modal, tooltip, results)
-    3. map.js       — canvas state + rendering (calls renderResults, parlTab)
-    4. parliament.js — parliament arc (calls render, renderResults)
-    5. sheets.js    — async data loader (calls everything above)
--->
-<script src="static/js/helpers.js"></script>
-<script src="static/js/ui.js"></script>
-<script src="static/js/map.js"></script>
-<script src="static/js/parliament.js"></script>
-<script src="static/js/sheets.js"></script>
-
-<script>
-  // ── Boot ──────────────────────────────────────────────────────────────────
-  resizeCanvas();
-  render();
-  loadFromSheet();
-</script>
-</body>
-</html>
