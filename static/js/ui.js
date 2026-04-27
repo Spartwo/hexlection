@@ -232,12 +232,6 @@ function renderModalList() {
   });
 }
 
-function addParty() {
-  const cols = ['#ff595e','#ffca3a','#6a4c93','#1982c4','#8ac926','#ff924c','#c77dff','#06d6a0'];
-  modalDraft.push({ id: 'p' + Date.now(), name: 'New Party', color: cols[modalDraft.length % cols.length] });
-  renderModalList();
-}
-
 function saveModal() {
   PARTIES = modalDraft.map(p => Object.assign({}, p));
   closeModal();

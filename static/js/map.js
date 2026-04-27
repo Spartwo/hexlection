@@ -151,7 +151,6 @@ function processImage(img) {
   }
 
   territoryCount = uniqueHex.size;
-  document.getElementById('hdr-sub').textContent = territoryCount + ' territories · ' + NW + '×' + NH + ' grid';
   document.getElementById('total').textContent = '0\u00a0/\u00a0' + territoryCount + ' assigned';
   document.getElementById('maj-n').textContent = Math.floor(territoryCount/2) + 1;
   setStatus('');
