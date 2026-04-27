@@ -9,11 +9,9 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#0d0d0d;--surface:#161616;--surface2:#1e1e1e;--border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.14);--text:#ede9e3;--muted:#7a7a72;--dim:#3a3a36;--accent:#d4bc7a}
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:"DM Sans",sans-serif;overflow:hidden}
-#app{display:grid;grid-template-rows:50px 1fr;height:100vh}
-header{display:flex;align-items:center;border-bottom:1px solid var(--border);background:var(--surface);padding:0 16px;height:50px;overflow:hidden;gap:0}
-header h1{font-size:13px;font-weight:600;letter-spacing:.03em;margin-right:16px;white-space:nowrap}
-header .sub{font-size:11px;color:var(--muted);font-family:"DM Mono",monospace;margin-right:auto;white-space:nowrap}
-#party-bar{display:flex;align-items:center;gap:3px;overflow-x:auto;flex-shrink:0;padding:2px 0}
+#app{display:grid;grid-template-columns:1fr 380px;height:100vh}
+header{display:none}
+#party-bar{display:none}
 .pbtn{display:flex;align-items:center;gap:5px;padding:3px 6px;border-radius:20px;border:1.5px solid transparent;cursor:pointer;font-size:11px;font-weight:500;font-family:"DM Sans",sans-serif;color:var(--muted);background:transparent;white-space:nowrap;user-select:none;transition:color .1s,background .1s,border-color .1s}
 .pbtn:hover{color:var(--text);background:var(--surface2)}
 .pbtn.active{color:var(--text);background:var(--surface2);border-color:var(--ac,#888)}
@@ -21,7 +19,7 @@ header .sub{font-size:11px;color:var(--muted);font-family:"DM Mono",monospace;ma
 .vsep{width:1px;height:20px;background:var(--border);margin:0 6px;flex-shrink:0}
 #clrbtn{font-size:11px;padding:3px 10px;border-radius:5px;border:1px solid var(--border2);background:transparent;cursor:pointer;color:var(--muted);font-family:"DM Sans",sans-serif;transition:all .12s;flex-shrink:0}
 #clrbtn:hover{color:var(--text);border-color:var(--muted)}
-#body{display:grid;grid-template-columns:1fr 185px;overflow:hidden;height:100%}
+#body{display:contents}
 #map-wrap{position:relative;overflow:hidden;background:var(--bg);cursor:crosshair}
 #map-canvas{display:block;position:absolute;top:0;left:0}
 #url-bar{display:none}
@@ -31,22 +29,50 @@ header .sub{font-size:11px;color:var(--muted);font-family:"DM Mono",monospace;ma
 #url-go{font-size:11px;padding:4px 10px;border-radius:5px;border:none;background:var(--accent);color:#000;cursor:pointer;font-family:"DM Sans",sans-serif;font-weight:500;white-space:nowrap;flex-shrink:0}
 #url-go:hover{opacity:.85}
 #url-status{font-size:10px;color:var(--muted);white-space:nowrap;min-width:60px}
-#sidebar{border-left:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column;overflow-y:auto;padding:14px 12px}
-.sh{font-size:10px;font-weight:500;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;font-family:"DM Mono",monospace;margin-bottom:10px}
-.rrow{display:flex;align-items:center;gap:6px;padding:3px 0;font-size:12px}
-.rsw{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+#sidebar{display:none}
+.sh{font-size:10px;font-weight:500;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;font-family:"DM Mono",monospace;margin-bottom:8px}
+.rrow{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px;border-bottom:1px solid var(--border)}
+.rrow:last-child{border-bottom:none}
+.rsw{width:10px;height:10px;border-radius:2px;flex-shrink:0}
 .rname{flex:1;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rcount{font-family:"DM Mono",monospace;font-size:11px;color:var(--text);min-width:26px;text-align:right}
+.rcount{font-family:"DM Mono",monospace;font-size:12px;font-weight:600;color:var(--text);min-width:30px;text-align:right}
 .rrow.has .rname{color:var(--text)}
-.rrow.has .rcount{font-weight:500}
-#total{font-size:11px;color:var(--muted);font-family:"DM Mono",monospace;border-top:1px solid var(--border);padding-top:8px;margin-top:6px}
+#total{font-size:11px;color:var(--muted);font-family:"DM Mono",monospace;padding-top:8px;margin-top:4px}
 #total strong{color:var(--text)}
 .majlabel{display:flex;justify-content:space-between;font-size:10px;color:var(--dim);font-family:"DM Mono",monospace;margin:8px 0 4px}
-.majtrack{height:3px;background:var(--surface2);border-radius:2px;overflow:hidden;margin-bottom:12px}
+.majtrack{height:2px;background:var(--surface2);border-radius:2px;overflow:hidden;margin-bottom:8px}
 .majfill{height:100%;border-radius:2px;background:var(--accent);transition:width .3s}
-.hint{font-size:10px;color:var(--dim);line-height:1.8;border-top:1px solid var(--border);padding-top:10px;margin-top:auto}
-#edit-btn{font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:none;cursor:pointer;color:var(--dim);font-family:"DM Mono",monospace;margin-top:6px;width:100%;transition:all .12s}
-#edit-btn:hover{color:var(--muted);border-color:var(--dim)}
+#edit-btn{display:none}
+
+/* ── Right column ────────────────────────────────────────────────────────── */
+#right-col{display:flex;flex-direction:column;background:var(--surface);border-left:1px solid var(--border);overflow:hidden;height:100vh}
+#parliament{display:flex;flex-direction:column;flex-shrink:0}
+#parl-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
+.ptab{padding:8px 14px;font-size:11px;font-weight:500;color:var(--muted);cursor:pointer;border:none;background:none;font-family:"DM Sans",sans-serif;border-bottom:2px solid transparent;transition:color .12s,border-color .12s;white-space:nowrap;flex:1;text-align:center}
+.ptab:hover{color:var(--text)}
+.ptab.active{color:var(--text);border-bottom-color:var(--accent)}
+#parl-canvas-wrap{position:relative;overflow:hidden;height:260px;flex-shrink:0;border-bottom:1px solid var(--border)}
+#parl-canvas{display:block;width:100%;height:100%}
+/* ── Results list ─────────────────────────────────────────────────────────── */
+#results-col{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:0;min-height:0}
+.rrow{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px}
+.rrow:last-child{border-bottom:none}
+.rsw{width:10px;height:26px;border-radius:2px;flex-shrink:0}
+.rname{flex:1;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
+.rcount{font-family:"DM Mono",monospace;font-size:13px;font-weight:600;color:var(--text);min-width:30px;text-align:right}
+.rrow.has .rname{color:var(--text)}
+#results-footer{padding:10px 16px;border-top:1px solid var(--border);flex-shrink:0}
+#total{font-size:11px;color:var(--muted);font-family:"DM Mono",monospace}
+#total strong{color:var(--text)}
+.majlabel{display:flex;justify-content:space-between;font-size:10px;color:var(--dim);font-family:"DM Mono",monospace;margin:6px 0 3px}
+.majtrack{height:2px;background:var(--surface2);border-radius:2px;overflow:hidden}
+.majfill{height:100%;border-radius:2px;background:var(--accent);transition:width .3s}
+/* hide old elements */
+#parl-legend{display:none}
+.pl-item,.pl-swatch,.pl-name,.pl-count{display:none}
+#edit-btn{display:none}
+#sidebar{display:none}
+
 #tip{position:fixed;background:var(--surface);border:1px solid var(--border2);border-radius:7px;padding:10px 12px;font-size:12px;pointer-events:none;z-index:999;display:none;color:var(--text);box-shadow:0 6px 24px rgba(0,0,0,.6);min-width:160px;max-width:240px}
 #tip .tn{font-weight:600;margin-bottom:1px;font-size:13px}
 #tip .tregion{font-size:10px;color:var(--muted);margin-bottom:8px}
@@ -75,38 +101,33 @@ header .sub{font-size:11px;color:var(--muted);font-family:"DM Mono",monospace;ma
 </head>
 <body>
 <div id="app">
-  <header>
-    <h1>Hex District Map</h1>
-    <span class="sub" id="hdr-sub">loading from sheet…</span>
-    <div id="party-bar"></div>
-    <div class="vsep"></div>
-    <button id="clrbtn" onclick="clearAll()">Clear all</button>
-  </header>
+  <header></header>
   <div id="body">
     <div id="map-wrap">
       <canvas id="map-canvas"></canvas>
       <div id="url-bar">
-        <label>Image URL</label>
-        <input id="url-input" type="text" value="https://i.imgur.com/IYVjC5H.png" placeholder="https://…">
-        <button id="url-go" onclick="loadFromURL()">Load</button>
+        <input id="url-input" type="text" value="" placeholder="https://…">
         <span id="url-status"></span>
       </div>
     </div>
-    <div id="sidebar">
-      <div class="sh">Results</div>
-      <div id="results-list"></div>
-      <div id="total">—</div>
-      <div class="majlabel"><span>Majority</span><span id="maj-n">—</span></div>
-      <div class="majtrack"><div class="majfill" id="maj-fill" style="width:0%"></div></div>
-      <button id="edit-btn" onclick="openModal()">&#10002; Edit parties</button>
-      <div class="hint" style="margin-top:10px">
-        Pick a party above,<br>
-        click to assign a territory.<br>
-        All cells of that territory<br>
-        are assigned together.<br>
-        Right-click to clear.<br>
-        Scroll to zoom, middle-drag to pan.
+    <div id="sidebar"><div id="results-list"></div><div id="total"></div><div class="majtrack"><div class="majfill" id="maj-fill" style="width:0%"></div></div><span id="maj-n" style="display:none"></span><button id="edit-btn"></button></div>
+  </div>
+  <div id="right-col">
+    <div id="parliament">
+      <div id="parl-tabs">
+        <button class="ptab active" data-tab="party">Party</button>
+        <button class="ptab" data-tab="intl">Intl. Group</button>
+        <button class="ptab" data-tab="nation">Nation</button>
       </div>
+      <div id="parl-canvas-wrap"><canvas id="parl-canvas"></canvas></div>
+    </div>
+    <div id="results-col">
+      <div id="results-list-main"></div>
+    </div>
+    <div id="results-footer">
+      <div id="total-main">—</div>
+      <div class="majlabel"><span>Majority threshold</span><span id="maj-n-main">—</span></div>
+      <div class="majtrack"><div class="majfill" id="maj-fill-main" style="width:0%"></div></div>
     </div>
   </div>
 </div>
@@ -143,6 +164,8 @@ const STROKE_BOUNDARY  = 'rgba(255,255,255,0.80)';
 const WIDTH_BOUNDARY   = 2.0;
 
 let PARTIES = [];
+let parlTab    = 'party'; // active parliament tab
+let parlFilter = null;    // selected legend filter
 
 // ── Google Sheets integration ─────────────────────────────────────────────
 const SHEET_ID = '1Sf_FElbmBA7-JCL9s0MB5wVRW-Gz4TviA5K_QJwPXDU';
@@ -192,10 +215,11 @@ function parseCSV(text) {
 async function loadFromSheet() {
   setStatus('loading sheet…');
   try {
-    const [electionRows, partyRows, zoneRows] = await Promise.all([
+    const [electionRows, partyRows, zoneRows, groupsRaw] = await Promise.all([
       fetchSheet('Election'),
       fetchSheet('Parties'),
       fetchSheet('Zones'),
+      fetchSheet('Groups'),
     ]);
 
     // ── 1. Image URL from Election!B2 ─────────────────────────────────────
@@ -225,7 +249,7 @@ async function loadFromSheet() {
       const summaryKey = keys.find(k => /summary|desc/i.test(k));
       const hexKey     = keys.find(k => /hex|colour|color/i.test(k));
       const nationKey  = keys.find(k => /nation|country/i.test(k));
-      const intlKey    = keys.find(k => /intl|international|group/i.test(k));
+      const intlKey    = keys.find(k => k.trim() === 'International Group') || keys.find(k => /intl|international/i.test(k));
 
       const name    = (row[nameKey]    || '').trim();
       const short   = (row[shortKey]   || '').trim();
@@ -304,37 +328,69 @@ async function loadFromSheet() {
     const floor      = 1 / numParties;
     const ceil       = 0.70;
 
-    window.ZONE_DISPLAY = {};
+    function blendToWhite(hexColor, strength) {
+      const r = parseInt(hexColor.slice(1,3),16);
+      const g = parseInt(hexColor.slice(3,5),16);
+      const b = parseInt(hexColor.slice(5,7),16);
+      const t = 0.25 + strength * 0.75;
+      return '#' + [
+        Math.round(255 + (r-255)*t),
+        Math.round(255 + (g-255)*t),
+        Math.round(255 + (b-255)*t),
+      ].map(v => v.toString(16).padStart(2,'0')).join('');
+    }
+
+    window.ZONE_DISPLAY = {}; // party colours — built now
     window.ZONES.forEach(zone => {
       if (!zone.color) return;
       const party = zone.winner ? partyByShort[zone.winner] : null;
-
-      if (!party) {
-        window.ZONE_DISPLAY[zone.color] = { color: FILL_UNASSIGNED, party: null, zone };
-        return;
-      }
-
-      // Desaturate toward white: strength=1 → full party colour, strength=0 → white
+      if (!party) { window.ZONE_DISPLAY[zone.color] = { color: FILL_UNASSIGNED, party: null, zone }; return; }
       const strength = Math.max(0, Math.min(1, (zone.winPct - floor) / (ceil - floor)));
-      const pr = parseInt(party.color.slice(1, 3), 16);
-      const pg = parseInt(party.color.slice(3, 5), 16);
-      const pb = parseInt(party.color.slice(5, 7), 16);
-      const t  = 0.25 + strength * 0.75; // min 25% colour even at narrowest win
-      const br = Math.round(255 + (pr - 255) * t);
-      const bg = Math.round(255 + (pg - 255) * t);
-      const bb = Math.round(255 + (pb - 255) * t);
-      const blended = '#' + [br, bg, bb].map(v => v.toString(16).padStart(2, '0')).join('');
-
-      window.ZONE_DISPLAY[zone.color] = { color: blended, party, zone };
-
-      // Pre-populate tState with winning party so results panel shows on load
+      window.ZONE_DISPLAY[zone.color] = { color: blendToWhite(party.color, strength), party, zone };
       tState[zone.color] = party.id;
+    });
+    // ZONE_DISPLAY_INTL built after step 4b once GROUPS is populated
+
+    // ── 4b. Parse Groups sheet ────────────────────────────────────────────
+    // Groups sheet columns repeat: row1=shorthand(header), row2=fullname, row6=hexcode
+    // Apps Script uses row 1 as column headers, so:
+    //   groupsRaw[0] = { shorthand: shorthand, ... }  (row 2, full names)
+    //   groupsRaw[4] = { shorthand: hexcode, ... }    (row 6, 0-indexed = index 4)
+    // Wait — Apps Script skips row 1 (headers) so index 0 = row 2, index 4 = row 6
+    window.GROUPS = {};
+    if (groupsRaw && groupsRaw.length > 0) {
+      // Row 1 became the keys. Row 2 (index 0) = full names. Row 6 (index 4) = hexcodes.
+      const nameRow  = groupsRaw[0]; // row 2 = full names (index 0 after header stripped)
+      const colorRow = groupsRaw[4]; // row 6 = hexcodes  (index 4 after header stripped)
+      if (nameRow) {
+        Object.keys(nameRow).forEach(short => {
+          if (!short || short.trim() === '') return;
+          const name   = (nameRow[short] || short).trim();
+          const rawHex = colorRow ? (colorRow[short] || '').trim().replace(/^#/, '') : '';
+          const color  = /^[0-9a-fA-F]{6}$/.test(rawHex) ? '#' + rawHex : '#888888';
+          window.GROUPS[short.trim()] = { name, color };
+        });
+      }
+    }
+
+    // ── 4c. Build ZONE_DISPLAY_INTL now that GROUPS is populated ─────────
+    window.ZONE_DISPLAY_INTL = {};
+    window.ZONES.forEach(zone => {
+      if (!zone.color) return;
+      const party = zone.winner ? partyByShort[zone.winner] : null;
+      const group = party && party.intlGrp ? (window.GROUPS || {})[party.intlGrp] : null;
+      if (!party) { window.ZONE_DISPLAY_INTL[zone.color] = { color: FILL_UNASSIGNED, party: null, zone }; return; }
+      const strength = Math.max(0, Math.min(1, (zone.winPct - floor) / (ceil - floor)));
+      window.ZONE_DISPLAY_INTL[zone.color] = { color: blendToWhite(group ? group.color : party.color, strength), party, zone };
     });
 
     // ── 5. Boot UI ────────────────────────────────────────────────────────
     buildPartyBar();
     selParty = PARTIES[0] ? PARTIES[0].id : null;
     renderResults();
+    buildSeats();
+    buildParlLegend();
+    renderParliament();
 
     setStatus('loading image…');
     document.getElementById('url-input').value = imageUrl;
@@ -469,7 +525,8 @@ function render() {
 
     // Walk directed edges into loops per colour
     for (const [hexColor, startMap] of Object.entries(dirEdges)) {
-      const zd = window.ZONE_DISPLAY && window.ZONE_DISPLAY[hexColor];
+      const displayMap = (parlTab === 'intl') ? window.ZONE_DISPLAY_INTL : window.ZONE_DISPLAY;
+      const zd = displayMap && displayMap[hexColor];
       const fillColor = zd ? zd.color : FILL_UNASSIGNED;
 
       // Copy adjacency so we can consume edges
@@ -505,7 +562,54 @@ function render() {
       }
       ctx.fillStyle = fillColor;
       ctx.fill('evenodd');
+
+      // Cache loops for filter overlay in pass 1b
+      if (!window._territoryLoops) window._territoryLoops = {};
+      window._territoryLoops[hexColor] = loops;
     }
+    // Reset cache each render so stale data doesn't persist after zoom/pan
+    // (loops are world-space coords so they DO change with zoom — recomputed each frame)
+  }
+
+  // ── Pass 1b: parliament filter overlay ──────────────────────────────────
+  const pf = window.PARL_FILTER;
+  if (pf && pf.value !== null && window._territoryLoops) {
+    const matchColors = new Set();
+
+    if (pf.tab === 'party' || pf.tab === 'nation') {
+      // Party: zone where that party won plurality
+      // Nation: zone in that region
+      (window.ZONES || []).forEach(zone => {
+        if (!zone.color) return;
+        let match = false;
+        if (pf.tab === 'party')  match = zone.winner === pf.value;
+        if (pf.tab === 'nation') match = zone.region === pf.value;
+        if (match) matchColors.add(zone.color);
+      });
+    } else if (pf.tab === 'intl') {
+      // Intl group: highlight zones that have ANY allocated seats from this group
+      // Build set of province names that have seats from this group
+      const matchProvinces = new Set();
+      (window.SEATS || []).forEach(seat => {
+        if (seat.intlGrp === pf.value) matchProvinces.add(seat.province);
+      });
+      (window.ZONES || []).forEach(zone => {
+        if (zone.color && matchProvinces.has(zone.name)) matchColors.add(zone.color);
+      });
+    }
+    ctx.save();
+    for (const [hexColor, loops] of Object.entries(window._territoryLoops)) {
+      if (matchColors.has(hexColor)) continue;
+      ctx.beginPath();
+      for (const loop of loops) {
+        ctx.moveTo(loop[0].x, loop[0].y);
+        for (let i = 1; i < loop.length; i++) ctx.lineTo(loop[i].x, loop[i].y);
+        ctx.closePath();
+      }
+      ctx.fillStyle = 'rgba(13,13,13,0.65)';
+      ctx.fill('evenodd');
+    }
+    ctx.restore();
   }
 
   // ── Pass 2: edges — deduplicated via a Set ────────────────────────────────
@@ -772,7 +876,9 @@ function renderTooltip(zone, zd) {
   voteEntries.forEach(([short, pct]) => {
     if (pct < 0.01) { otherVotes.votes += pct; return; }
     const party = PARTIES.find(p => p.short === short);
-    mainParties.push({ id: short, name: party ? party.name : short, color: party ? party.color : '#888', votes: pct });
+    const grp = party && party.intlGrp ? (window.GROUPS||{})[party.intlGrp] : null;
+    const intlColor = grp ? grp.color : (party ? party.color : '#888');
+    mainParties.push({ id: short, name: party ? party.name : short, color: party ? party.color : '#888', intlColor, votes: pct });
   });
   mainParties.sort((a, b) => b.votes - a.votes);
 
@@ -781,16 +887,30 @@ function renderTooltip(zone, zd) {
   if (hasVotes) {
     const allocated = allocateSeats(mainParties, zone.seats);
     allocated.sort((a, b) => b.seats - a.seats).forEach(p => {
-      for (let i = 0; i < p.seats; i++) seatList.push({ color: p.color, name: p.name });
+      for (let i = 0; i < p.seats; i++) seatList.push({
+        color: p.color,
+        intlColor: p.intlColor || p.color,
+        name: p.name
+      });
     });
   } else {
-    // No vote data yet — show all seats as unallocated grey
-    for (let i = 0; i < zone.seats; i++) seatList.push({ color: '#44444f', name: 'No data' });
+    for (let i = 0; i < zone.seats; i++) seatList.push({ color: '#44444f', intlColor: '#44444f', name: 'No data' });
+  }
+
+  // ── Build intl group aggregates for intl tab ──
+  const intlGroups = {}; // shorthand → { name, color, votes }
+  if (parlTab === 'intl') {
+    mainParties.forEach(p => {
+      const party = PARTIES.find(q => q.short === p.id);
+      const grpKey = party ? party.intlGrp : null;
+      const grp = grpKey ? (window.GROUPS||{})[grpKey] : null;
+      const key = grpKey || '—';
+      if (!intlGroups[key]) intlGroups[key] = { name: grp ? grp.name : (grpKey || '—'), color: grp ? grp.color : p.color, votes: 0 };
+      intlGroups[key].votes += p.votes;
+    });
   }
 
   // Render flat-top hex SVGs in rows of max 4
-  const path = flatHexPath(R);
-  // Flat-top hex: width=2R, height=R*sqrt(3). Centre at (R,R*sqrt(3)/2).
   seatList.forEach(seat => {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('width', '20'); svg.setAttribute('height', '18');
@@ -798,7 +918,6 @@ function renderTooltip(zone, zd) {
     svg.style.cssText = 'display:block';
     const title = document.createElementNS('http://www.w3.org/2000/svg','title');
     title.textContent = seat.name; svg.appendChild(title);
-    // Flat-top hex centred at (10, 9), radius 9
     const cx = 10, cy = 9, hr = 9;
     const pts = Array.from({length:6},(_,i)=>{
       const a = Math.PI/3*i;
@@ -806,7 +925,7 @@ function renderTooltip(zone, zd) {
     }).join(' ');
     const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
     poly.setAttribute('points', pts);
-    poly.setAttribute('fill', seat.color);
+    poly.setAttribute('fill', parlTab === 'intl' ? seat.intlColor : seat.color);
     poly.setAttribute('stroke', 'rgba(0,0,0,0.3)');
     poly.setAttribute('stroke-width', '1');
     svg.appendChild(poly);
@@ -816,6 +935,33 @@ function renderTooltip(zone, zd) {
   // ── Vote share list ──
   const vlist = document.getElementById('t-votes');
   vlist.innerHTML = '';
+
+  if (parlTab === 'intl') {
+    // Show group vote aggregates
+    Object.values(intlGroups).sort((a,b) => b.votes - a.votes).forEach(g => {
+      const row = document.createElement('div'); row.className = 'tvrow';
+      const left = document.createElement('div'); left.className = 'tvcol';
+      const sw = document.createElement('div'); sw.className = 'tvsw'; sw.style.background = g.color;
+      const nm = document.createElement('span'); nm.textContent = g.name;
+      left.appendChild(sw); left.appendChild(nm);
+      const pct = document.createElement('span'); pct.textContent = (g.votes * 100).toFixed(1) + '%';
+      row.appendChild(left); row.appendChild(pct);
+      vlist.appendChild(row);
+    });
+    // Other
+    if (otherVotes.votes > 0) {
+      const row = document.createElement('div'); row.className = 'tvrow other';
+      const left = document.createElement('div'); left.className = 'tvcol';
+      const sw = document.createElement('div'); sw.className = 'tvsw'; sw.style.background = '#666677';
+      const nm = document.createElement('span'); nm.textContent = 'Other';
+      left.appendChild(sw); left.appendChild(nm);
+      const pct = document.createElement('span'); pct.textContent = (otherVotes.votes * 100).toFixed(1) + '%';
+      row.appendChild(left); row.appendChild(pct);
+      vlist.appendChild(row);
+    }
+    return; // skip party list below
+  }
+
   mainParties.forEach(p => {
     const row = document.createElement('div'); row.className = 'tvrow';
     const left = document.createElement('div'); left.className = 'tvcol';
@@ -845,7 +991,8 @@ canvas.addEventListener('mousemove',function(e){
   if(hit&&origColors){
     const hex=origColors[hit.row]&&origColors[hit.row][hit.col];
     if(!hex){tip.style.display='none';return;}
-    const zd = window.ZONE_DISPLAY && window.ZONE_DISPLAY[hex];
+    const displayMap = (parlTab === 'intl') ? window.ZONE_DISPLAY_INTL : window.ZONE_DISPLAY;
+    const zd = displayMap && displayMap[hex];
     const zone = zd ? zd.zone : null;
     if (zone) {
       renderTooltip(zone, zd);
@@ -879,29 +1026,64 @@ document.getElementById('url-input').addEventListener('keydown',e=>{if(e.key==='
 function renderResults(){
   const zones = window.ZONES || [];
   const totalSeats = zones.reduce((s, z) => s + z.seats, 0);
-  const zoneByHex = {};
-  zones.forEach(z => { if (z.color) zoneByHex[z.color.toLowerCase()] = z; });
-  const seatsByParty = {};
-  PARTIES.forEach(p => seatsByParty[p.id] = 0);
-  Object.entries(tState).forEach(([hex, pid]) => {
-    if (seatsByParty[pid] === undefined) return;
-    const zone = zoneByHex[hex.toLowerCase()];
-    seatsByParty[pid] += zone ? zone.seats : 1;
-  });
-  const assignedSeats = Object.values(seatsByParty).reduce((a, b) => a + b, 0);
-  const list = document.getElementById('results-list'); list.innerHTML = '';
-  [...PARTIES].sort((a, b) => seatsByParty[b.id] - seatsByParty[a.id]).forEach(p => {
-    const s = seatsByParty[p.id];
-    const row = document.createElement('div'); row.className = 'rrow' + (s > 0 ? ' has' : '');
-    const sw = document.createElement('div'); sw.className = 'rsw'; sw.style.background = p.color;
-    const nm = document.createElement('div'); nm.className = 'rname'; nm.textContent = p.short || p.name;
-    const ct = document.createElement('div'); ct.className = 'rcount'; ct.textContent = s || '';
-    row.appendChild(sw); row.appendChild(nm); row.appendChild(ct); list.appendChild(row);
-  });
   const maj = Math.floor((totalSeats || 1) / 2) + 1;
-  document.getElementById('total').innerHTML = '<strong>' + assignedSeats + '</strong> / ' + (totalSeats || territoryCount) + ' seats';
-  document.getElementById('maj-n').textContent = maj;
-  document.getElementById('maj-fill').style.width = Math.min(100, assignedSeats / maj * 100) + '%';
+
+  // Build seat counts from SEATS array (already allocated from vote data)
+  const seats = window.SEATS || [];
+  const isIntl = parlTab === 'intl';
+
+  if (isIntl) {
+    // Group view: aggregate by international group
+    const byGroup = {};
+    seats.forEach(s => {
+      const key = s.intlGrp || '—';
+      if (!byGroup[key]) {
+        const grp = (window.GROUPS||{})[key];
+        byGroup[key] = { name: grp ? grp.name : key, color: s.intlColor, count: 0 };
+      }
+      byGroup[key].count++;
+    });
+    const list = document.getElementById('results-list-main'); list.innerHTML = '';
+    Object.values(byGroup).sort((a,b) => b.count - a.count).forEach(g => {
+      const row = document.createElement('div'); row.className = 'rrow' + (g.count > 0 ? ' has' : '');
+      const sw = document.createElement('div'); sw.className = 'rsw'; sw.style.background = g.color;
+      const nm = document.createElement('div'); nm.className = 'rname'; nm.textContent = g.name;
+      const ct = document.createElement('div'); ct.className = 'rcount'; ct.textContent = g.count || '';
+      row.appendChild(sw); row.appendChild(nm); row.appendChild(ct); list.appendChild(row);
+    });
+  } else {
+    // Party view: show all parties ranked by seat count with full names
+    const byParty = {};
+    PARTIES.forEach(p => byParty[p.short || p.name] = { name: p.name, color: p.color, count: 0 });
+    seats.forEach(s => {
+      const key = s.short || s.party;
+      if (byParty[key]) byParty[key].count++;
+    });
+    const list = document.getElementById('results-list-main'); list.innerHTML = '';
+    Object.values(byParty).sort((a,b) => b.count - a.count).forEach(p => {
+      const row = document.createElement('div'); row.className = 'rrow' + (p.count > 0 ? ' has' : '');
+      const sw = document.createElement('div'); sw.className = 'rsw'; sw.style.background = p.color;
+      const nm = document.createElement('div'); nm.className = 'rname'; nm.textContent = p.name;
+      const ct = document.createElement('div'); ct.className = 'rcount'; ct.textContent = p.count || '';
+      row.appendChild(sw); row.appendChild(nm); row.appendChild(ct); list.appendChild(row);
+    });
+  }
+
+  const assignedSeats = seats.filter(s => s.party).length;
+  const totalMain = document.getElementById('total-main');
+  if (totalMain) totalMain.innerHTML = '<strong>' + assignedSeats + '</strong> / ' + totalSeats + ' seats assigned';
+  const majN = document.getElementById('maj-n-main');
+  if (majN) majN.textContent = maj;
+  const majFill = document.getElementById('maj-fill-main');
+  if (majFill) majFill.style.width = Math.min(100, assignedSeats / maj * 100) + '%';
+
+  // Keep old elements in sync for any code that references them
+  const oldTotal = document.getElementById('total');
+  if (oldTotal) oldTotal.innerHTML = '<strong>' + assignedSeats + '</strong> / ' + totalSeats + ' seats';
+  const oldMajN = document.getElementById('maj-n');
+  if (oldMajN) oldMajN.textContent = maj;
+  const oldFill = document.getElementById('maj-fill');
+  if (oldFill) oldFill.style.width = Math.min(100, assignedSeats / maj * 100) + '%';
 }
 function clearAll(){Object.keys(tState).forEach(k=>delete tState[k]);renderResults();render();}
 function buildPartyBar(){}
@@ -929,6 +1111,361 @@ function saveModal(){PARTIES=modalDraft.map(p=>Object.assign({},p));closeModal()
 document.getElementById('modal-overlay').addEventListener('click',function(e){if(e.target===document.getElementById('modal-overlay'))closeModal();});
 
 resizeCanvas();render();loadFromSheet();
+// ══════════════════════════════════════════════════════════════════════════════
+// PARLIAMENT ARC
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Global seat list — computed once after sheet loads
+// Each entry: { party, intlGrp, nation, color, intlColor }
+window.SEATS = [];
+// parlTab and parlFilter declared as globals above
+
+function buildSeats() {
+  window.SEATS = [];
+  const zones = window.ZONES || [];
+
+  // Build intl group → color map from GROUPS sheet data
+  const intlColors = {};
+  const groups = window.GROUPS || {};
+  PARTIES.forEach(p => {
+    if (!p.intlGrp) return;
+    if (groups[p.intlGrp]) {
+      intlColors[p.intlGrp] = groups[p.intlGrp].color;
+    } else if (!intlColors[p.intlGrp]) {
+      intlColors[p.intlGrp] = p.color; // fallback to party color
+    }
+  });
+
+  zones.forEach(zone => {
+    if (!zone.votes || !zone.seats) return;
+
+    // Allocate seats via largest remainder (same as tooltip)
+    const voteEntries = Object.entries(zone.votes).filter(([,pct]) => pct >= 0.01);
+    const totalVote = voteEntries.reduce((s,[,p]) => s+p, 0);
+    if (totalVote <= 0) {
+      // No data — add grey placeholder seats
+      for (let i = 0; i < zone.seats; i++) {
+        window.SEATS.push({ party: null, intlGrp: null, nation: zone.region, color: '#44444f', intlColor: '#44444f' });
+      }
+      return;
+    }
+
+    // Largest remainder
+    const quotas = voteEntries.map(([short, pct]) => {
+      const party = PARTIES.find(p => p.short === short);
+      return { party, short, quota: pct / totalVote * zone.seats };
+    });
+    quotas.forEach(q => { q.seats = Math.floor(q.quota); q.rem = q.quota - q.seats; });
+    let rem = zone.seats - quotas.reduce((s,q) => s+q.seats, 0);
+    quotas.sort((a,b) => b.rem - a.rem);
+    for (let i = 0; i < rem; i++) quotas[i].seats++;
+
+    quotas.forEach(q => {
+      for (let i = 0; i < q.seats; i++) {
+        const p = q.party;
+        window.SEATS.push({
+          party:    p ? p.name    : q.short,
+          short:    q.short,
+          intlGrp:  p ? p.intlGrp : null,
+          nation:   zone.region,
+          province: zone.name,
+          color:    p ? p.color   : '#888',
+          intlColor: p && p.intlGrp ? (intlColors[p.intlGrp] || p.color) : (p ? p.color : '#888'),
+        });
+      }
+    });
+  });
+
+  // Sort: by intl group, then by party within group
+  const intlOrder = {};
+  let idx = 0;
+  PARTIES.forEach(p => { if (p.intlGrp && intlOrder[p.intlGrp] === undefined) intlOrder[p.intlGrp] = idx++; });
+  const partyOrder = {};
+  PARTIES.forEach((p,i) => { partyOrder[p.short || p.name] = i; });
+
+  window.SEATS.sort((a,b) => {
+    const ai = a.intlGrp != null ? (intlOrder[a.intlGrp] ?? 999) : 999;
+    const bi = b.intlGrp != null ? (intlOrder[b.intlGrp] ?? 999) : 999;
+    if (ai !== bi) return ai - bi;
+    const ap = partyOrder[a.short] ?? 999;
+    const bp = partyOrder[b.short] ?? 999;
+    return ap - bp;
+  });
+}
+
+// ── Arc geometry — upper 4 edges of a pointy-top hexagon ────────────────────
+// Pointy-top hex corners (angle = -90 + 60*i):
+//   i=0: top apex (-90°)
+//   i=1: upper-right (-30°)
+//   i=2: lower-right (30°)
+//   i=3: bottom-right (90°)  ← excluded
+//   i=4: bottom-left (150°)  ← excluded
+//   i=5: upper-left (210°=-150°)
+// Upper 4 edges: lower-left(i=4) → upper-left(i=5) → apex(i=0) → upper-right(i=1) → lower-right(i=2)
+// This gives the crown/chevron shape with the point at the top.
+
+function hexUpperPath(cx, cy, radius) {
+  const corner = i => {
+    const a = Math.PI * (-90 + 60 * i) / 180;
+    return { x: cx + radius * Math.cos(a), y: cy + radius * Math.sin(a) };
+  };
+  // 5 points tracing the upper 4 edges left→right
+  return [corner(4), corner(5), corner(0), corner(1), corner(2)];
+}
+
+function segLengths(pts) {
+  const segs = [];
+  for (let i = 1; i < pts.length; i++) {
+    const dx = pts[i].x - pts[i-1].x, dy = pts[i].y - pts[i-1].y;
+    segs.push(Math.sqrt(dx*dx + dy*dy));
+  }
+  return segs;
+}
+
+function pointAtDist(pts, segs, dist) {
+  let walked = 0;
+  for (let i = 0; i < segs.length; i++) {
+    if (walked + segs[i] >= dist) {
+      const t = (dist - walked) / segs[i];
+      return {
+        x: pts[i].x + (pts[i+1].x - pts[i].x) * t,
+        y: pts[i].y + (pts[i+1].y - pts[i].y) * t
+      };
+    }
+    walked += segs[i];
+  }
+  return pts[pts.length - 1];
+}
+
+function renderParliament() {
+  const canvas = document.getElementById('parl-canvas');
+  const wrap   = document.getElementById('parl-canvas-wrap');
+  canvas.width  = wrap.clientWidth  * devicePixelRatio;
+  canvas.height = wrap.clientHeight * devicePixelRatio;
+  canvas.style.width  = wrap.clientWidth  + 'px';
+  canvas.style.height = wrap.clientHeight + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  const W = wrap.clientWidth, H = wrap.clientHeight;
+  ctx.clearRect(0,0,W,H);
+
+  const seats = window.SEATS;
+  if (!seats || !seats.length) return;
+  const n = seats.length;
+
+  const dotR    = Math.max(2.5, Math.min(6, H / 16));
+  const rowGap  = dotR * 2.5;
+
+  // Pointy-top hex: corner(i) at angle -90+60*i degrees.
+  // Upper 4 edges run from corner[4](150°) to corner[2](30°) via apex corner[0](-90°).
+  // corner[4].x = cx - R*sin(60°) = cx - R*√3/2  → set = padding
+  // corner[4].y = cy + R*cos(60°) = cy + R*0.5   → set = H - padding
+  // corner[0].y = cy - R           (apex, highest point)
+  // We want: apex at top (cy - R ≈ dotR*2), bottom corners near canvas bottom.
+  // From bottom corners: cy + R*0.5 = H - dotR  → cy = H - dotR - R*0.5
+  // From width:          R*√3/2 = W/2 - dotR    → R = (W/2 - dotR) / (√3/2)
+  // But also constrain apex to be within canvas: cy - R >= dotR
+  //   H - dotR - R*0.5 - R >= dotR  →  R <= (H - 2*dotR) / 1.5
+  const Rbywidth  = (W / 2 - dotR * 2) / (Math.sqrt(3) / 2);
+  const Rbyheight = (H - dotR * 3) / 1.5;
+  const outerR = Math.min(Rbywidth, Rbyheight);
+  const cx = W / 2;
+  const cy = H - dotR - outerR * 0.5;
+
+  // Build concentric rows from inner to outer
+  const minR = outerR * 0.28;
+  const numRows = Math.max(1, Math.floor((outerR - minR) / rowGap));
+
+  // Each row radius
+  const radii = Array.from({length: numRows}, (_, i) => minR + i * rowGap);
+
+  // Seats per row proportional to path length
+  const rowPaths = radii.map(r => hexUpperPath(cx, cy, r));
+  const rowLens  = rowPaths.map(pts => segLengths(pts).reduce((a,b)=>a+b,0));
+  const totalLen = rowLens.reduce((a,b)=>a+b,0);
+  const seatsPerRow = radii.map((_,i) => Math.round(n * rowLens[i] / totalLen));
+
+  // Fix rounding
+  let total = seatsPerRow.reduce((a,b)=>a+b,0);
+  let ri = 0;
+  while (total < n) { seatsPerRow[ri++ % numRows]++; total++; }
+  while (total > n) { seatsPerRow[(--ri + numRows) % numRows]--; total--; }
+
+  // ── Wedge seat placement ──────────────────────────────────────────────
+  // Build a 2D grid[row][col] using each row's own even spacing (so seats
+  // spread correctly across the full arc width at every radius).
+  // Then read it column-first, outer→inner, so parties form angular wedges.
+  //
+  // For inner rows (fewer seats than nCols), we assign each inner seat to the
+  // outer column it best represents using Bresenham-style distribution —
+  // this gives each inner seat exactly one outer column slot with no duplicates
+  // and no gaps.
+
+  // Pre-compute segs for every row
+  const rowSegs = rowPaths.map(pts => segLengths(pts));
+
+  // grid[row] = array of {x,y} positions for that row, left→right
+  const grid = rowPaths.map((pts, row) => {
+    const segs  = rowSegs[row];
+    const len   = rowLens[row];
+    const count = seatsPerRow[row];
+    return Array.from({ length: count }, (_, s) => {
+      const t = (s + 0.5) / count;
+      return pointAtDist(pts, segs, t * len);
+    });
+  });
+
+  // nCols = outermost row (index numRows-1) which has the most seats
+  const nCols = seatsPerRow[numRows - 1];
+
+  // For each row, build a mapping: outerCol -> seatInThisRow (or null)
+  // Uses Bresenham-style even distribution so every inner seat maps to
+  // exactly one unique outer column, with no duplicates and no skips.
+  const rowColMap = grid.map((rowSeats, row) => {
+    const count = rowSeats.length;
+    const map   = new Array(nCols).fill(null);
+    // Distribute `count` items across `nCols` slots evenly
+    for (let s = 0; s < count; s++) {
+      // The outer column this inner seat owns: evenly spaced with half-step centering
+      const outerCol = Math.floor((s + 0.5) * nCols / count);
+      map[outerCol] = s;
+    }
+    return map;
+  });
+
+  // Read column-first, outer row (numRows-1) → inner row (0)
+  const positions = [];
+  let seatIdx = 0;
+
+  for (let col = 0; col < nCols && seatIdx < n; col++) {
+    for (let row = numRows - 1; row >= 0 && seatIdx < n; row--) {
+      const innerSeat = rowColMap[row][col];
+      if (innerSeat === null) continue; // this row has no seat in this column
+      const pt = grid[row][innerSeat];
+      positions.push({ x: pt.x, y: pt.y, seatIdx });
+      seatIdx++;
+    }
+  }
+
+  // Highlight logic
+  function isHighlighted(seat) {
+    if (!parlFilter) return true;
+    if (parlTab === 'party')  return seat.short    === parlFilter;
+    if (parlTab === 'intl')   return seat.intlGrp  === parlFilter;
+    if (parlTab === 'nation') return seat.nation   === parlFilter;
+    return true;
+  }
+
+  function seatColor(seat) {
+    if (parlTab === 'intl') return seat.intlColor;
+    return seat.color;
+  }
+
+  // Draw dimmed pass first, then highlighted on top
+  for (const highlighted of [false, true]) {
+    for (const pos of positions) {
+      const seat = seats[pos.seatIdx];
+      const hi = isHighlighted(seat);
+      if (hi !== highlighted) continue;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, dotR - 0.5, 0, Math.PI * 2);
+      ctx.fillStyle = hi ? seatColor(seat) : 'rgba(255,255,255,0.07)';
+      ctx.fill();
+    }
+  }
+}
+
+
+// ── Legend ───────────────────────────────────────────────────────────────────
+function buildParlLegend() {
+  const el = document.getElementById('parl-legend');
+  if (!el) return;   // ← guard
+  legend.innerHTML = '';
+  const seats = window.SEATS || [];
+
+  let groups = [];
+  if (parlTab === 'party') {
+    const map = {};
+    seats.forEach(s => {
+      const key = s.short || s.party || '?';
+      if (!map[key]) map[key] = { name: s.party, short: s.short, color: s.color, count: 0 };
+      map[key].count++;
+    });
+    groups = Object.values(map).sort((a,b) => b.count - a.count);
+    groups.forEach(g => { g.key = g.short; });
+  } else if (parlTab === 'intl') {
+    const map = {};
+    const grps = window.GROUPS || {};
+    seats.forEach(s => {
+      const key = s.intlGrp || '—';
+      if (!map[key]) {
+        const grp = grps[key];
+        map[key] = { name: grp ? grp.name : key, color: s.intlColor, count: 0 };
+      }
+      map[key].count++;
+    });
+    groups = Object.values(map).sort((a,b) => b.count - a.count);
+    groups.forEach(g => { g.key = g.name === '—' ? null : g.name; });
+  } else if (parlTab === 'nation') {
+    const map = {};
+    seats.forEach(s => {
+      const key = s.nation || '—';
+      if (!map[key]) map[key] = { name: key, color: '#7a7a72', count: 0 };
+      map[key].count++;
+    });
+    groups = Object.values(map).sort((a,b) => b.count - a.count);
+    groups.forEach(g => { g.key = g.name; });
+  }
+
+  groups.forEach(g => {
+    const item = document.createElement('div');
+    item.className = 'pl-item' + (parlFilter === g.key ? ' active' : '');
+    const sw = document.createElement('div');
+    sw.className = 'pl-swatch';
+    sw.style.background = g.color;
+    const nm = document.createElement('div');
+    nm.className = 'pl-name';
+    nm.textContent = g.name || '—';
+    const ct = document.createElement('div');
+    ct.className = 'pl-count';
+    ct.textContent = g.count;
+    item.appendChild(sw); item.appendChild(nm); item.appendChild(ct);
+    item.addEventListener('click', () => {
+      parlFilter = (parlFilter === g.key) ? null : g.key;
+      buildParlLegend();
+      renderParliament();
+      applyMapFilter();
+    });
+    legend.appendChild(item);
+  });
+}
+
+// ── Map filter ───────────────────────────────────────────────────────────────
+function applyMapFilter() {
+  // Build set of highlighted zone colors based on filter
+  // Then re-render map with dimmed non-matching territories
+  window.PARL_FILTER = { tab: parlTab, value: parlFilter };
+  render();
+}
+
+// ── Tab switching ────────────────────────────────────────────────────────────
+document.querySelectorAll('.ptab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    parlTab = btn.dataset.tab;
+    parlFilter = null;
+    document.querySelectorAll('.ptab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    buildParlLegend();
+    renderParliament();
+    renderResults();
+    applyMapFilter();
+    render(); // recolour map for new tab
+  });
+});
+
+// Resize observer for parliament canvas
+new ResizeObserver(() => renderParliament()).observe(document.getElementById('parl-canvas-wrap'));
+
 </script>
 </body>
 </html>
