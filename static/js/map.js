@@ -277,6 +277,21 @@ function render() {
     ctx.restore();
   }
 
+  // ── Pass 1c: hover highlight ──────────────────────────────────────────────
+  const hovHex = window.HOVERED_HEX;
+  if (hovHex && window._territoryLoops && window._territoryLoops[hovHex]) {
+    ctx.save();
+    ctx.beginPath();
+    for (const loop of window._territoryLoops[hovHex]) {
+      ctx.moveTo(loop[0].x, loop[0].y);
+      for (let i = 1; i < loop.length; i++) ctx.lineTo(loop[i].x, loop[i].y);
+      ctx.closePath();
+    }
+    ctx.fillStyle = 'rgba(255,255,255,0.10)';
+    ctx.fill('evenodd');
+    ctx.restore();
+  }
+
   // ── Pass 2: edges ─────────────────────────────────────────────────────────
   const seen = new Set();
   const internal  = [];

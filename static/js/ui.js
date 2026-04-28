@@ -19,22 +19,22 @@ function renderResults() {
       const key = s.intlGrp || '—';
       if (!byGroup[key]) {
         const grp = (window.GROUPS||{})[key];
-        byGroup[key] = { name: grp ? grp.name : key, color: s.intlColor, count: 0 };
+        byGroup[key] = { key, name: grp ? grp.name : key, color: s.intlColor, count: 0 };
       }
       byGroup[key].count++;
     });
     Object.values(byGroup).sort((a,b) => b.count - a.count).forEach(g => {
-      list.appendChild(_resultRow(g.color, g.name, g.count));
+      list.appendChild(_resultRow(g.color, g.name, g.count, g.key, 'intl'));
     });
   } else {
     const byParty = {};
-    PARTIES.forEach(p => { byParty[p.short || p.name] = { name: p.name, color: p.color, count: 0 }; });
+    PARTIES.forEach(p => { byParty[p.short || p.name] = { short: p.short || p.name, name: p.name, color: p.color, count: 0 }; });
     seats.forEach(s => {
       const key = s.short || s.party;
       if (byParty[key]) byParty[key].count++;
     });
     Object.values(byParty).sort((a,b) => b.count - a.count).forEach(p => {
-      list.appendChild(_resultRow(p.color, p.name, p.count));
+      list.appendChild(_resultRow(p.color, p.name, p.count, p.short, 'party'));
     });
   }
 
@@ -56,13 +56,22 @@ function renderResults() {
   if (oldFill) oldFill.style.width = Math.min(100, assignedSeats / maj * 100) + '%';
 }
 
-function _resultRow(color, name, count) {
+function _resultRow(color, name, count, shortKey, tabKey) {
   const row = document.createElement('div');
-  row.className = 'rrow' + (count > 0 ? ' has' : '');
+  // Mark active if this party is currently the focus filter
+  const isActive = window.PARL_FILTER && window.PARL_FILTER.value === shortKey && window.PARL_FILTER.tab === tabKey;
+  row.className = 'rrow' + (count > 0 ? ' has' : '') + (isActive ? ' focused' : '');
   const sw = document.createElement('div'); sw.className = 'rsw'; sw.style.background = color;
   const nm = document.createElement('div'); nm.className = 'rname'; nm.textContent = name;
   const ct = document.createElement('div'); ct.className = 'rcount'; ct.textContent = count || '';
   row.appendChild(sw); row.appendChild(nm); row.appendChild(ct);
+  if (shortKey) {
+    row.style.cursor = 'pointer';
+    row.addEventListener('click', () => {
+      if (typeof toggleResultsFilter === 'function') toggleResultsFilter(shortKey, tabKey);
+      renderResults();
+    });
+  }
   return row;
 }
 
@@ -178,7 +187,8 @@ _canvas.addEventListener('mousemove', function(e) {
   const tip  = document.getElementById('tip');
   if (hit && origColors) {
     const hex = origColors[hit.row] && origColors[hit.row][hit.col];
-    if (!hex) { tip.style.display = 'none'; return; }
+    if (!hex) { tip.style.display = 'none'; if (window.HOVERED_HEX) { window.HOVERED_HEX = null; render(); } return; }
+    if (window.HOVERED_HEX !== hex) { window.HOVERED_HEX = hex; render(); }
     const displayMap = (parlTab === 'intl') ? window.ZONE_DISPLAY_INTL : window.ZONE_DISPLAY;
     const zd   = displayMap && displayMap[hex];
     const zone = zd ? zd.zone : null;
@@ -194,10 +204,14 @@ _canvas.addEventListener('mousemove', function(e) {
     tip.style.left    = Math.min(e.clientX + 14, window.innerWidth  - 210) + 'px';
     tip.style.top     = Math.min(e.clientY - 8,  window.innerHeight - 90)  + 'px';
   } else {
+    if (window.HOVERED_HEX) { window.HOVERED_HEX = null; render(); }
     tip.style.display = 'none';
   }
 });
-_canvas.addEventListener('mouseleave', () => { document.getElementById('tip').style.display = 'none'; });
+_canvas.addEventListener('mouseleave', () => {
+  document.getElementById('tip').style.display = 'none';
+  if (window.HOVERED_HEX) { window.HOVERED_HEX = null; render(); }
+});
 
 // ── Party bar ──────────────────────────────────────────────────────────────────
 function buildPartyBar() {
