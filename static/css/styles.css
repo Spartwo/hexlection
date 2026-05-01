@@ -1,11 +1,43 @@
-
-<|channel|>analysis<|message|>We need rewrite entire code block but ensure it's valid CSS. The original is CSS already. Maybe issue is that comments inside? But we just output same code. Ensure no placeholders. Provide full block with same content. Let's do it.<|end|><|start|>assistant<|channel|>final<|message|>```css
-<START EDITING HERE>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#0d0d0d;--surface:#161616;--surface2:#1e1e1e;--border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.14);--text:#ede9e3;--muted:#7a7a72;--dim:#3a3a36;--accent:#d4bc7a}
+:root,[data-theme="dark"]{--bg:#0d0d0d;--surface:#161616;--surface2:#1e1e1e;--border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.14);--text:#ede9e3;--muted:#7a7a72;--dim:#3a3a36;--accent:#d4bc7a}
+[data-theme="light"]{--bg:#f4f2ee;--surface:#ffffff;--surface2:#f0ede8;--border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.15);--text:#1a1a18;--muted:#7a7a72;--dim:#b0ada6;--accent:#9a7c2e}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:"DM Sans",sans-serif;overflow:hidden}
 #app{display:grid;grid-template-columns:1fr 380px;height:100vh}
 header{display:none}
+#data-source-bar{display:none}
+#settings-btn{position:fixed;bottom:14px;left:14px;z-index:100;font-size:11px;padding:5px 12px;border-radius:6px;border:1px solid var(--border2);background:var(--surface);color:var(--muted);cursor:pointer;font-family:"DM Sans",sans-serif;transition:all .12s;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+#settings-btn:hover{color:var(--text);border-color:var(--muted)}
+
+/* ── Settings modal (tabbed) ────────────────────────────────────────────── */
+#settings-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;align-items:center;justify-content:center}
+#settings-overlay.open{display:flex}
+#settings-modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;width:580px;max-width:94vw;max-height:80vh;display:flex;overflow:hidden;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+#settings-nav{width:148px;flex-shrink:0;background:var(--surface2);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:16px 0}
+.snav-title{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;font-family:"DM Mono",monospace;padding:0 16px 12px}
+.snav-item{background:none;border:none;text-align:left;padding:8px 16px;font-size:12px;color:var(--muted);cursor:pointer;font-family:"DM Sans",sans-serif;border-radius:0;transition:color .12s,background .12s;width:100%}
+.snav-item:hover{color:var(--text);background:rgba(255,255,255,0.04)}
+.snav-item.active{color:var(--text);background:rgba(255,255,255,0.07);font-weight:500}
+#settings-body{flex:1;overflow-y:auto;padding:24px}
+.settings-panel{display:none;flex-direction:column;gap:18px}
+.settings-panel.active{display:flex}
+.spanel-title{font-size:14px;font-weight:600;color:var(--text);padding-bottom:12px;border-bottom:1px solid var(--border)}
+.sfield{display:flex;flex-direction:column;gap:6px}
+.sfield label{font-size:11px;color:var(--muted);font-family:"DM Mono",monospace}
+#script-url-input{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:8px 10px;color:var(--text);font-family:"DM Mono",monospace;font-size:12px;outline:none;transition:border-color .12s}
+#script-url-input:focus{border-color:var(--muted)}
+.settings-hint{font-size:11px;color:var(--muted);line-height:1.6}
+.settings-hint em{font-style:normal;color:var(--text)}
+.sfield-row{display:flex;gap:8px;justify-content:flex-end;align-items:center}
+.sbtn-ghost{font-size:11px;padding:5px 12px;border-radius:5px;border:1px solid var(--border2);background:none;color:var(--muted);cursor:pointer;font-family:"DM Sans",sans-serif;transition:all .12s}
+.sbtn-ghost:hover{color:var(--text);border-color:var(--muted)}
+.sbtn-primary{font-size:11px;padding:5px 14px;border-radius:5px;border:none;background:var(--text);color:var(--bg);cursor:pointer;font-family:"DM Sans",sans-serif;font-weight:500;transition:opacity .12s}
+.sbtn-primary:hover{opacity:.85}
+.sradio-group{display:flex;gap:6px}
+.sradio{font-size:11px;padding:5px 14px;border-radius:5px;border:1px solid var(--border2);background:none;color:var(--muted);cursor:pointer;font-family:"DM Sans",sans-serif;transition:all .12s}
+.sradio.active{background:var(--text);color:var(--bg);border-color:var(--text);font-weight:500}
+#settings-close{position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;line-height:1;padding:2px 4px;border-radius:4px;transition:color .12s}
+#settings-close:hover{color:var(--text)}
 #party-bar{display:none}
 .pbtn{display:flex;align-items:center;gap:5px;padding:3px 6px;border-radius:20px;border:1.5px solid transparent;cursor:pointer;font-size:11px;font-weight:500;font-family:"DM Sans",sans-serif;color:var(--muted);background:transparent;white-space:nowrap;user-select:none;transition:color .1s,background .1s,border-color .1s}
 .pbtn:hover{color:var(--text);background:var(--surface2)}
@@ -43,12 +75,12 @@ header{display:none}
 #edit-btn{display:none}
 
 /* ── Right column ────────────────────────────────────────────────────────── */
-#right-col{display:flex;flex-direction:column;background:var(--surface);border-left:1px solid var(--border);overflow:hidden;height:100vh}
+#right-col{display:flex;flex-direction:column;background:var(--surface);border-left:1px solid var(--border);overflow:hidden;}
 #parliament{display:flex;flex-direction:column;flex-shrink:0}
 #parl-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
-.ptab{padding:8px 14px;font-size:11px;font-weight:500;color:var(--muted);cursor:pointer;border:none;background:none;font-family:"DM Sans",sans-serif;border-bottom:2px solid transparent;transition:color .12s,border-color .12s;white-space:nowrap;flex:1;text-align:center}
+.ptab{padding:8px 14px;font-size:11px;font-weight:500;color:var(--muted);cursor:pointer;border:none;background:none;font-family:"DM Sans",sans-serif;transition:color .12s,background .12s;white-space:nowrap;flex:1;text-align:center}
 .ptab:hover{color:var(--text)}
-.ptab.active{color:var(--text);border-bottom-color:var(--accent)}
+.ptab.active{color:var(--text);background:var(--surface2)}
 #parl-canvas-wrap{position:relative;overflow:hidden;height:260px;flex-shrink:0;border-bottom:1px solid var(--border)}
 #parl-canvas{display:block;width:100%;height:100%}
 /* ── Results list ─────────────────────────────────────────────────────────── */
@@ -62,7 +94,7 @@ header{display:none}
 .rrow[style*="cursor"]:hover{background:rgba(255,255,255,0.04)}
 .rrow.focused{background:rgba(255,255,255,0.07)}
 .rrow.focused .rname{color:var(--text);font-weight:500}
-#results-footer{padding:10px 16px;border-top:1px solid var(--border);flex-shrink:0}
+#results-footer{display:none}
 #total{font-size:11px;color:var(--muted);font-family:"DM Mono",monospace}
 #total strong{color:var(--text)}
 .majlabel{display:flex;justify-content:space-between;font-size:10px;color:var(--dim);font-family:"DM Mono",monospace;margin:6px 0 3px}

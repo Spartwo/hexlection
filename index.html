@@ -9,20 +9,16 @@
 </head>
 <body>
 <div id="app">
-  <header></header>
   <div id="body">
     <div id="map-wrap">
       <canvas id="map-canvas"></canvas>
       <div id="url-bar">
-        <input id="url-input" type="text" value="" placeholder="https://…">
+        <input id="url-input" type="text" value="" placeholder="https://...">
         <span id="url-status"></span>
       </div>
     </div>
     <div id="sidebar">
       <div id="results-list"></div>
-      <div id="total"></div>
-      <div class="majtrack"><div class="majfill" id="maj-fill" style="width:0%"></div></div>
-      <span id="maj-n" style="display:none"></span>
       <button id="edit-btn"></button>
     </div>
   </div>
@@ -37,14 +33,51 @@
     <div id="results-col">
       <div id="results-list-main"></div>
     </div>
-    <div id="results-footer">
-      <div id="total-main">—</div>
-      <div class="majlabel"><span>Majority threshold</span><span id="maj-n-main">—</span></div>
-      <div class="majtrack"><div class="majfill" id="maj-fill-main" style="width:0%"></div></div>
-    </div>
   </div>
 </div>
 
+<button id="settings-btn" title="Settings">Settings</button>
+
+<div id="settings-overlay">
+  <div id="settings-modal">
+    <nav id="settings-nav">
+      <div class="snav-title">Settings</div>
+      <button class="snav-item active" data-panel="data">Data Source</button>
+      <button class="snav-item" data-panel="appearance">Appearance</button>
+    </nav>
+    <div id="settings-body">
+
+      <!-- ── Data Source panel ────────────────────────────────────────────── -->
+      <div class="settings-panel active" id="panel-data">
+        <div class="spanel-title">Data Source</div>
+        <div class="sfield">
+          <label for="script-url-input">Apps Script URL</label>
+          <input id="script-url-input" type="url" spellcheck="false"
+                 placeholder="https://script.google.com/macros/s/.../exec">
+          <p class="settings-hint">Paste the deployment URL of your Google Apps Script. It must serve JSON for the sheets: <em>Election, Parties, Zones, Groups</em>.</p>
+        </div>
+        <div class="sfield-row">
+          <button id="settings-reset" class="sbtn-ghost">Reset to default</button>
+          <button id="settings-save" class="sbtn-primary">Save &amp; Reload</button>
+        </div>
+      </div>
+
+      <!-- ── Appearance panel ─────────────────────────────────────────────── -->
+      <div class="settings-panel" id="panel-appearance">
+        <div class="spanel-title">Appearance</div>
+        <div class="sfield">
+          <label>Theme</label>
+          <div class="sradio-group" id="theme-picker">
+            <button class="sradio active" data-theme="dark">Dark</button>
+            <button class="sradio" data-theme="light">Light</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <button id="settings-close" title="Close">X</button>
+  </div>
+</div>
 <div id="modal-overlay">
   <div id="modal">
     <h2>Edit Parties</h2>
@@ -66,12 +99,12 @@
 </div>
 
 <!--
-  Load order matters:
-    1. helpers.js   — constants + pure utilities (no DOM deps)
-    2. ui.js        — DOM-dependent UI (PARTIES, modal, tooltip, results)
-    3. map.js       — canvas state + rendering (calls renderResults, parlTab)
-    4. parliament.js — parliament arc (calls render, renderResults)
-    5. sheets.js    — async data loader (calls everything above)
+  Load order:
+    1. helpers.js   — constants + pure utilities
+    2. ui.js        — DOM UI (PARTIES, modal, tooltip, results)
+    3. map.js       — canvas state + rendering
+    4. parliament.js — parliament arc
+    5. sheets.js    — async Google Sheets loader
 -->
 <script src="static/js/helpers.js"></script>
 <script src="static/js/ui.js"></script>
@@ -84,6 +117,62 @@
   resizeCanvas();
   render();
   loadFromSheet();
+
+  // ── Settings modal ────────────────────────────────────────────────────────
+  const settingsOverlay = document.getElementById('settings-overlay');
+  const scriptUrlInput  = document.getElementById('script-url-input');
+
+  function openSettings() {
+    scriptUrlInput.value = localStorage.getItem('appsScriptUrl') || '';
+    applyThemeButtons();
+    settingsOverlay.classList.add('open');
+  }
+  function closeSettings() { settingsOverlay.classList.remove('open'); }
+
+  document.getElementById('settings-btn').addEventListener('click', openSettings);
+  document.getElementById('settings-close').addEventListener('click', closeSettings);
+  settingsOverlay.addEventListener('click', e => { if (e.target === settingsOverlay) closeSettings(); });
+
+  // Tab switching
+  document.querySelectorAll('.snav-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.snav-item').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.settings-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('panel-' + btn.dataset.panel).classList.add('active');
+    });
+  });
+
+  // Data source
+  document.getElementById('settings-reset').addEventListener('click', () => {
+    scriptUrlInput.value = '';
+  });
+  document.getElementById('settings-save').addEventListener('click', () => {
+    const val = scriptUrlInput.value.trim();
+    if (val) localStorage.setItem('appsScriptUrl', val);
+    else localStorage.removeItem('appsScriptUrl');
+    closeSettings();
+    loadFromSheet();
+  });
+
+  // Theme
+  function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+    applyThemeButtons();
+    render(); // repaint canvas with new bg/stroke colours
+  }
+  function applyThemeButtons() {
+    const current = localStorage.getItem('theme') || 'dark';
+    document.querySelectorAll('.sradio').forEach(b => {
+      b.classList.toggle('active', b.dataset.theme === current);
+    });
+  }
+  document.querySelectorAll('.sradio').forEach(btn => {
+    btn.addEventListener('click', () => applyTheme(btn.dataset.theme));
+  });
+  // Apply saved theme on boot
+  applyTheme(localStorage.getItem('theme') || 'dark');
 </script>
 </body>
 </html>

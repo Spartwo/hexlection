@@ -4,9 +4,6 @@ let modalDraft = [];
 
 // ── Results panel ──────────────────────────────────────────────────────────────
 function renderResults() {
-  const zones      = window.ZONES || [];
-  const totalSeats = zones.reduce((s, z) => s + z.seats, 0);
-  const maj        = Math.floor((totalSeats || 1) / 2) + 1;
   const seats      = window.SEATS || [];
   const isIntl     = parlTab === 'intl';
 
@@ -37,23 +34,6 @@ function renderResults() {
       list.appendChild(_resultRow(p.color, p.name, p.count, p.short, 'party'));
     });
   }
-
-  const assignedSeats = seats.filter(s => s.party).length;
-
-  const totalMain = document.getElementById('total-main');
-  if (totalMain) totalMain.innerHTML = '<strong>' + assignedSeats + '</strong> / ' + totalSeats + ' seats assigned';
-  const majN = document.getElementById('maj-n-main');
-  if (majN) majN.textContent = maj;
-  const majFill = document.getElementById('maj-fill-main');
-  if (majFill) majFill.style.width = Math.min(100, assignedSeats / maj * 100) + '%';
-
-  // Keep legacy elements in sync
-  const oldTotal = document.getElementById('total');
-  if (oldTotal) oldTotal.innerHTML = '<strong>' + assignedSeats + '</strong> / ' + totalSeats + ' seats';
-  const oldMajN  = document.getElementById('maj-n');
-  if (oldMajN) oldMajN.textContent = maj;
-  const oldFill  = document.getElementById('maj-fill');
-  if (oldFill) oldFill.style.width = Math.min(100, assignedSeats / maj * 100) + '%';
 }
 
 function _resultRow(color, name, count, shortKey, tabKey) {
@@ -146,7 +126,7 @@ function renderTooltip(zone) {
     const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
     poly.setAttribute('points', pts);
     poly.setAttribute('fill', parlTab === 'intl' ? seat.intlColor : seat.color);
-    poly.setAttribute('stroke', 'rgba(0,0,0,0.3)');
+    poly.setAttribute('stroke', TIP_HEX_STROKE());
     poly.setAttribute('stroke-width', '1');
     svg.appendChild(poly);
     grid.appendChild(svg);
@@ -239,11 +219,24 @@ function renderModalList() {
     ci.addEventListener('input', function() { modalDraft[i].color = this.value; });
     const ni  = document.createElement('input'); ni.type = 'text'; ni.value = p.name; ni.placeholder = 'Party name';
     ni.addEventListener('input', function() { modalDraft[i].name = this.value; });
-    const db  = document.createElement('button'); db.textContent = '×';
+    const db  = document.createElement('button'); db.textContent = 'X';
     db.addEventListener('click', () => { modalDraft.splice(i, 1); renderModalList(); });
     row.appendChild(ci); row.appendChild(ni); row.appendChild(db);
     el.appendChild(row);
   });
+}
+
+function addParty() {
+  modalDraft.push({
+    id: 'p' + modalDraft.length,
+    name: 'New party',
+    short: '',
+    summary: '',
+    color: '#888888',
+    nation: '',
+    intlGrp: ''
+  });
+  renderModalList();
 }
 
 function saveModal() {

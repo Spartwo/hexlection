@@ -151,8 +151,6 @@ function processImage(img) {
   }
 
   territoryCount = uniqueHex.size;
-  document.getElementById('total').textContent = '0\u00a0/\u00a0' + territoryCount + ' assigned';
-  document.getElementById('maj-n').textContent = Math.floor(territoryCount/2) + 1;
   setStatus('');
   computeLayout(); renderResults(); render();
 }
@@ -160,8 +158,9 @@ function processImage(img) {
 // ── Map render ─────────────────────────────────────────────────────────────────
 function render() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#0d0d0d';
+  ctx.fillStyle = MAP_BG();
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+  window._territoryLoops = {};
   if (!origColors) return;
 
   const er = r * zoom;
@@ -202,7 +201,7 @@ function render() {
     for (const [hexColor, startMap] of Object.entries(dirEdges)) {
       const displayMap = (parlTab === 'intl') ? window.ZONE_DISPLAY_INTL : window.ZONE_DISPLAY;
       const zd = displayMap && displayMap[hexColor];
-      const fillColor = zd ? zd.color : FILL_UNASSIGNED;
+      const fillColor = zd ? zd.color : FILL_UNASSIGNED();
 
       const remaining = {};
       for (const [k, arr] of Object.entries(startMap)) remaining[k] = [...arr];
@@ -234,7 +233,6 @@ function render() {
       ctx.fillStyle = fillColor;
       ctx.fill('evenodd');
 
-      if (!window._territoryLoops) window._territoryLoops = {};
       window._territoryLoops[hexColor] = loops;
     }
   }
@@ -271,7 +269,7 @@ function render() {
         for (let i = 1; i < loop.length; i++) ctx.lineTo(loop[i].x, loop[i].y);
         ctx.closePath();
       }
-      ctx.fillStyle = 'rgba(13,13,13,0.65)';
+      ctx.fillStyle = isDark() ? 'rgba(13,13,13,0.65)' : 'rgba(255,255,255,0.72)';
       ctx.fill('evenodd');
     }
     ctx.restore();
@@ -343,7 +341,7 @@ function render() {
       ctx.lineTo(internal[i+2], internal[i+3]);
     }
     const internalAlpha = Math.max(0, Math.min(1, (zoom - 2) / 4));
-    ctx.strokeStyle = `rgba(255,255,255,${(internalAlpha * 0.12).toFixed(3)})`;
+    ctx.strokeStyle = INTERNAL_STROKE((internalAlpha * 0.12).toFixed(3));
     ctx.lineWidth   = WIDTH_BOUNDARY;
     ctx.stroke();
   }
@@ -354,7 +352,7 @@ function render() {
       ctx.moveTo(boundary[i], boundary[i+1]);
       ctx.lineTo(boundary[i+2], boundary[i+3]);
     }
-    ctx.strokeStyle = STROKE_BOUNDARY;
+    ctx.strokeStyle = STROKE_BOUNDARY();
     ctx.lineWidth   = WIDTH_BOUNDARY;
     ctx.stroke();
   }
@@ -426,7 +424,6 @@ window.addEventListener('mouseup',   () => { panning = false; });
 window.addEventListener('resize',    () => { computeLayout(); render(); });
 
 document.getElementById('url-input').addEventListener('keydown', e => { if (e.key === 'Enter') loadFromURL(); });
-
 
 
 

@@ -4,10 +4,14 @@ const SCALE_X = 0.10;
 const SCALE_Y = 0.10 * 1.5 / SQRT3;
 const BLK = 40;
 const MIN_TERRITORY_PX = 80;
-
-const FILL_UNASSIGNED  = '#23232a';
-const STROKE_BOUNDARY  = 'rgba(255,255,255,0.80)';
 const WIDTH_BOUNDARY   = 2.0;
+
+function isDark() { return (document.documentElement.getAttribute('data-theme') || 'dark') === 'dark'; }
+function FILL_UNASSIGNED()  { return isDark() ? '#23232a' : '#ffffff'; }
+function STROKE_BOUNDARY()  { return isDark() ? 'rgba(255,255,255,0.80)' : 'rgba(0,0,0,0.55)'; }
+function MAP_BG()           { return isDark() ? '#0d0d0d' : '#ffffff'; }
+function INTERNAL_STROKE(a) { return isDark() ? `rgba(255,255,255,${a})` : `rgba(0,0,0,${a})`; }
+function TIP_HEX_STROKE()   { return isDark() ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.18)'; }
 
 // ── CSV parsing ────────────────────────────────────────────────────────────────
 function parseCSV(text) {
@@ -62,10 +66,11 @@ function allocateSeats(parties, totalSeats) {
   const total = parties.reduce((s, p) => s + p.votes, 0);
   if (total <= 0 || totalSeats <= 0) return parties.map(p => ({ ...p, seats: 0 }));
   const quotas = parties.map(p => ({ ...p, quota: p.votes / total * totalSeats }));
+  if (!quotas.length) return [];
   quotas.forEach(p => { p.seats = Math.floor(p.quota); p.rem = p.quota - p.seats; });
   let remaining = totalSeats - quotas.reduce((s, p) => s + p.seats, 0);
   quotas.sort((a, b) => b.rem - a.rem);
-  for (let i = 0; i < remaining; i++) quotas[i].seats++;
+  for (let i = 0; i < remaining; i++) quotas[i % quotas.length].seats++;
   return quotas;
 }
 

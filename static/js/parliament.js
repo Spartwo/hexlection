@@ -4,9 +4,20 @@ let parlFilter = null;    // selected legend filter value
 
 window.SEATS = [];
 
+// ── Election layout config (populated from Election sheet) ─────────────────
+// Set window.ELECTION_CONFIG before calling renderParliament().
+// Example:
+//   window.ELECTION_CONFIG = { arcAngle: 90, rows: 4, tailPct: 0.5 };
+// arcAngle : arc sweep degrees (0=classroom, 180=semicircle, 240=horseshoe, 360=circle)
+// rows     : fixed row count (0 = auto-solve for largest dots)
+// tailPct  : 0–1 fraction of seats in straight tail columns vs arc
+//            0 = pure arc, 1 = all in two Westminster-style columns
+window.ELECTION_CONFIG = window.ELECTION_CONFIG || { arcAngle: 360, rows: 4, tailPct: 0 };
+
 // ── Seat allocation from zone vote data ───────────────────────────────────────
 function buildSeats() {
   window.SEATS = [];
+
   const zones  = window.ZONES || [];
 
   const intlColors = {};
@@ -36,10 +47,11 @@ function buildSeats() {
       const party = PARTIES.find(p => p.short === short);
       return { party, short, quota: pct / totalVote * zone.seats };
     });
+    if (!quotas.length) return;
     quotas.forEach(q => { q.seats = Math.floor(q.quota); q.rem = q.quota - q.seats; });
     let rem = zone.seats - quotas.reduce((s,q) => s+q.seats, 0);
     quotas.sort((a,b) => b.rem - a.rem);
-    for (let i = 0; i < rem; i++) quotas[i].seats++;
+    for (let i = 0; i < rem; i++) quotas[i % quotas.length].seats++;
 
     quotas.forEach(q => {
       for (let i = 0; i < q.seats; i++) {
@@ -89,155 +101,183 @@ function renderParliament() {
   if (!seats || !seats.length) return;
   const n = seats.length;
 
-  // ── Hexagonal crown geometry ────────────────────────────────────────────────
-  // Pointy-top regular hexagon. Corner i at angle (-90 + 60·i)°.
-  //   i=0: top  i=1: upper-right  i=2: lower-right
-  //   i=3: bottom  i=4: lower-left  i=5: upper-left
-  //
-  // Crown = 4 edges: Left[4→5], TopLeft[5→0], TopRight[0→1], Right[1→2]
-  // outerR = circumradius; apothem = outerR·√3/2 (center-to-edge-midpoint)
-  // Crown spans: width = 2·apothem, height = 1.5·outerR (top to lower side corners)
-  const PAD    = 8;
-  const outerR = Math.min((W / 2 - PAD) / (Math.sqrt(3) / 2), (H - PAD) / 1.5);
-  const apo    = outerR * Math.sqrt(3) / 2;  // apothem
-  const cx     = W / 2;
-  const cy     = PAD + outerR;  // center is outerR below the top point
+  // ── Layout configuration ──────────────────────────────────────────────────
+  // Read live from window.ELECTION_CONFIG each render.
+  // Populated externally from the Election sheet cells:
+  //   arcAngle : arc sweep degrees (0=classroom, 180=semicircle, 240=horseshoe, 360=circle)
+  //   rows     : fixed row count (0 = auto)
+  //   tailPct  : 0–1, fraction of seats in tangential tail columns vs the arc
+  //              0=pure arc, 1=all seats in Westminster-style straight columns
+  const cfg       = window.ELECTION_CONFIG || {};
+  const arcDeg    = Number(cfg.arcAngle ?? 180);
+  const fixedRows = Number(cfg.rows     ?? 0);
+  const tailPct   = Math.max(0, Math.min(1, Number(cfg.tailPct ?? 0)));
+  const PAD       = 8;
 
-  const corner = i => {
-    const a = Math.PI / 180 * (-90 + 60 * i);
-    return { x: cx + outerR * Math.cos(a), y: cy + outerR * Math.sin(a) };
-  };
+  // ── Derived geometry ───────────────────────────────────────────────────────
+  // Arc midpoint points upward (canvas angle 3π/2). Arc sweeps symmetrically.
+  // 360° = full circle (closed loop, no endpoint duplication).
+  // Tails extend tangentially from each arc endpoint — not vertically.
+  // The tangent direction at arcStart (going "away" from the arc) is arcStart - π/2.
+  // The tangent direction at arcEnd   (going "away") is arcEnd   + π/2.
 
-  // ── Seat count split ────────────────────────────────────────────────────────
-  // n4   = largest multiple of 4 ≤ n  → fills the 4 crown segments exactly equally.
-  // rem  = n % 4  (0–3)               → placed in a 5th segment at the interior
-  //                                     angle below the crown apex (corner 0).
-  const rem = n % 4;
-  const n4  = n - rem;           // seats for the 4 main segments (n4/4 each)
-  const perSeg = n4 / 4;        // exact integer per segment — no surplus, no trimming
+  const isCircle  = arcDeg >= 360;
+  const arcSweep  = Math.min(arcDeg, 360) * Math.PI / 180;
+  const arcMid    = 3 * Math.PI / 2;
+  const arcStart  = arcMid - arcSweep / 2;
+  const arcEnd    = arcMid + arcSweep / 2;
 
-  // Solve for pitch p: largest p where one parallelogram segment holds ≥ perSeg seats.
-  // Capacity = T rows × maxCols columns = floor(apo/p) × floor(outerR/p).
-  let p = apo;
-  let T, totalCap;
+  // Tangent directions at the arc endpoints (pointing away from the arc body):
+  // At arcStart, the arc goes CW (increasing θ). Tangent going "backward" = arcStart - π/2.
+  // At arcEnd,   the arc goes CW. Tangent going "forward"  = arcEnd   + π/2.
+  const leftTangentDir  = arcStart - Math.PI / 2;   // direction tails go from left end
+  const rightTangentDir = arcEnd   + Math.PI / 2;   // direction tails go from right end
 
-  for (let iter = 0; iter < 200; iter++) {
-    p *= 0.97;
-    T = Math.floor(apo / p);
-    if (T < 1) continue;
-    // Trapezoid: at depth d = (r+0.5)*p, the valid along-range shrinks by d/√3 on each side.
-    // Valid columns at row r: floor((outerR - 2*(r+0.5)*p/√3) / p)
-    totalCap = 0;
-    for (let r = 0; r < T; r++) {
-      const w = outerR - 2 * (r + 0.5) * p / Math.sqrt(3);
-      totalCap += Math.max(0, Math.floor(w / p));
+  // Split seats: tailPct fraction in tails, rest in arc.
+  const tailTotal = isCircle ? 0 : Math.round(n * tailPct);
+  const arcTotal  = n - tailTotal;
+  const tailLeft  = tailTotal - Math.floor(tailTotal / 2);
+  const tailRight = Math.floor(tailTotal / 2);
+
+  // ── Bounding box (unit radius) ─────────────────────────────────────────────
+  function bbox(dr_u, R) {
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    const steps = 720;
+    // Arc
+    for (let k = 0; k <= steps; k++) {
+      const theta = arcStart + arcSweep * k / steps;
+      minX=Math.min(minX,Math.cos(theta)); maxX=Math.max(maxX,Math.cos(theta));
+      minY=Math.min(minY,Math.sin(theta)); maxY=Math.max(maxY,Math.sin(theta));
     }
-    if (totalCap >= perSeg) break;
-  }
-
-  // Dot radius: derived from the diagonal nearest-neighbour distance (p·sin60°)
-  // so dots never overlap even across rows in the tilted wedge geometry.
-  const dotR = p * Math.sqrt(3) / 2 * 0.46;  // ≈ 46% of the tightest gap
-
-  // ── Generate positions for all 4 segments, column by column left→right ──────
-  // Crown edges (pointy-top hexagon, corners 0–5):
-  //   Seg 0: Left      [4→5]   Seg 1: TopLeft  [5→0]
-  //   Seg 2: TopRight  [0→1]   Seg 3: Right    [1→2]
-  //
-  // Each segment is a parallelogram swept column-by-column from its start corner.
-  // Column c at along-offset (c+0.5)·p; row r at inward depth (r+0.5)·p.
-
-  const positions = [];
-  let seatIdx = 0;
-
-  const edgeDefs = [[4,5],[5,0],[0,1],[1,2]];
-  const segEdges = edgeDefs.map(([ci, cj]) => {
-    const s = corner(ci), e = corner(cj);
-    const dx = e.x - s.x, dy = e.y - s.y;
-    const len = Math.hypot(dx, dy);
-    const ax = dx / len, ay = dy / len;
-    return { s, e, ax, ay, ix: -ay, iy: ax };
-  });
-
-  const maxCols = Math.floor(outerR / p);
-
-  function segmentRows({ s, ax, ay, ix, iy }) {
-    // Each segment is a trapezoid: wide at the outer edge, narrowing inward.
-    // At depth d = (r+0.5)*p, the hex walls cut in by d/√3 on each side.
-    // Valid width at row r: w(r) = outerR - 2*depth/√3.
-    // Seats in that row: nCols = floor(w(r)/p), centred within the valid range.
-    // Centering: the row spans [lo, hi] = [cut, outerR-cut]; we place nCols
-    // seats evenly spaced starting from the centre outward so dots always fill
-    // the full available width without gaps at the edges.
-    const SQ3 = Math.sqrt(3);
-    const rows = [];
-    for (let r = 0; r < T; r++) {
-      const depth  = (r + 0.5) * p;
-      const cut    = depth / SQ3;
-      const w      = outerR - 2 * cut;          // available width at this depth
-      if (w <= 0) break;
-      const nCols  = Math.floor(w / p);
-      if (nCols <= 0) break;
-      // Centre the nCols seats within [cut, outerR-cut]
-      const span   = (nCols - 1) * p;
-      const start  = (outerR / 2) - span / 2;  // midpoint of range minus half-span
-      const row    = [];
-      for (let c = 0; c < nCols; c++) {
-        const alongPos = start + c * p;
-        const x = s.x + ax * alongPos + ix * depth;
-        const y = s.y + ay * alongPos + iy * depth;
-        row.push({ x, y });
+    // Tails: extend from arc endpoints in tangent direction
+    if (tailTotal > 0 && R > 0) {
+      const tailRows = Math.ceil(Math.max(tailLeft, tailRight) / R);
+      const tailLen  = tailRows * dr_u;
+      // Sample along each tail
+      for (let k = 1; k <= tailRows; k++) {
+        const t = k * dr_u;
+        const lx = Math.cos(arcStart) + t * Math.cos(leftTangentDir);
+        const ly = Math.sin(arcStart) + t * Math.sin(leftTangentDir);
+        const rx = Math.cos(arcEnd)   + t * Math.cos(rightTangentDir);
+        const ry = Math.sin(arcEnd)   + t * Math.sin(rightTangentDir);
+        minX=Math.min(minX,lx,rx); maxX=Math.max(maxX,lx,rx);
+        minY=Math.min(minY,ly,ry); maxY=Math.max(maxY,ly,ry);
       }
-      rows.push(row);
+      // Also account for the R columns spread across radius
+      const lx0 = Math.cos(arcStart), ly0 = Math.sin(arcStart);
+      const rx0 = Math.cos(arcEnd),   ry0 = Math.sin(arcEnd);
+      minX=Math.min(minX,lx0-dr_u*(R-1)); maxX=Math.max(maxX,rx0+dr_u*(R-1));
     }
-    return rows;
+    return { minX, maxX, minY, maxY, w: maxX-minX, h: maxY-minY };
   }
 
-  // Fill each segment row-by-row (outermost row first) so the trapezoid
-  // shape is visible: the wide outer rows fill first, then progressively
-  // narrower inner rows, stopping when perSeg seats are placed.
-  const segRows = segEdges.map(segmentRows);
+  // ── Solver ─────────────────────────────────────────────────────────────────
+  let bestPositions = null, bestDr = 0;
+  const Rmin = fixedRows > 0 ? fixedRows : 1;
+  const Rmax = fixedRows > 0 ? fixedRows : 20;
 
-  for (const rows of segRows) {
-    let taken = 0;
-    outer: for (const row of rows) {
-      for (const pt of row) {
-        if (taken >= perSeg) break outer;
-        positions.push({ x: pt.x, y: pt.y, seatIdx: seatIdx++ });
-        taken++;
+  for (let R = Rmin; R <= Rmax; R++) {
+    // Binary search for dr (normalised, rMax=1) so arc rows sum to arcTotal
+    let lo = 0.001, hi = 1.0;
+    for (let iter = 0; iter < 80; iter++) {
+      const dr  = (lo + hi) / 2;
+      const r0  = 1 - (R - 1) * dr;
+      if (r0 <= 0) { hi = dr; continue; }
+      let tot = 0;
+      for (let i = 0; i < R; i++) {
+        const r = r0 + i * dr;
+        // 360° = closed loop: seats distributed evenly without endpoint duplication
+        tot += Math.max(1, Math.round(r * arcSweep / dr));
+      }
+      if (tot > arcTotal) lo = dr; else hi = dr;
+    }
+    const dr_u = (lo + hi) / 2;
+    const r0_u = 1 - (R - 1) * dr_u;
+    if (r0_u <= 0) continue;
+
+    // Arc seat counts per row
+    const arcCounts = [];
+    for (let i = 0; i < R; i++) {
+      arcCounts.push(Math.max(1, Math.round((r0_u + i * dr_u) * arcSweep / dr_u)));
+    }
+    const arcGot = arcCounts.reduce((s,x) => s+x, 0);
+    arcCounts[R-1] += arcTotal - arcGot;
+    if (arcCounts[R-1] < 1) continue;
+
+    // Scale to canvas
+    const bb   = bbox(dr_u, R);
+    const rMax = Math.min((W/2 - PAD) / (bb.w / 2), (H - PAD*2) / bb.h) * 0.94;
+    if (rMax <= 0) continue;
+    const dr   = dr_u * rMax;
+    const r0   = r0_u * rMax;
+    const cx   = W / 2;
+    const cy   = PAD + rMax * (-bb.minY);
+
+    if (dr <= bestDr) continue;
+    bestDr = dr;
+
+    // ── Arc positions, swept angularly ──────────────────────────────────────
+    // Build grid [row][col] then zipper-sweep so parties form wedge shapes.
+    const arcGrid = [];
+    for (let i = 0; i < R; i++) {
+      const r = r0 + i * dr, count = arcCounts[i];
+      const row = [];
+      for (let j = 0; j < count; j++) {
+        // 360°: distribute evenly as a closed loop (no repeated endpoint)
+        const t     = isCircle ? j / count : (count === 1 ? 0.5 : j / (count - 1));
+        const theta = arcStart + t * arcSweep;
+        row.push({ x: cx + r * Math.cos(theta), y: cy + r * Math.sin(theta) });
+      }
+      arcGrid.push(row);
+    }
+
+    const pos = [];
+    let si = 0;
+    const maxCount = arcCounts[R - 1];
+    for (let j = 0; j < maxCount; j++) {
+      for (let i = 0; i < R; i++) {
+        const row   = arcGrid[i];
+        const clamp = Math.min(Math.round(j * (row.length - 1) / Math.max(1, maxCount - 1)), row.length - 1);
+        const owner = row.length === 1 ? 0 : Math.round(clamp * (maxCount - 1) / (row.length - 1));
+        if (owner === j) pos.push({ x: row[clamp].x, y: row[clamp].y, seatIdx: si++ });
       }
     }
-  }
 
-  // ── 5th segment: remainder seats below the crown apex (corner 0) ─────────────
-  // The interior angle at corner 0 points straight downward (toward cy).
-  // The bisector of segments 1 and 2 runs vertically from corner 0 downward.
-  // We place rem seats (0–3) in a compact horizontal cluster just below the
-  // innermost point of the crown tip, spaced by p and centred on cx.
-  if (rem > 0) {
-    // Remainder seats sit at the inner angle between Seg1 and Seg2, forming a
-    // small upward-pointing triangle (^):
-    //   rem=1 → single seat at the apex
-    //   rem=2 → two seats side by side one row below the apex
-    //   rem=3 → one seat at apex, two seats below (triangle ^)
-    // The apex sits one half-pitch past the innermost main row, along the
-    // bisector of corner 0 (straight downward from corner 0 toward cy).
-    const c0     = corner(0);
-    const apexY  = c0.y + T * p + 0.5 * p;   // tip of the triangle
-
-    if (rem === 1) {
-      positions.push({ x: cx, y: apexY, seatIdx: seatIdx++ });
-    } else if (rem === 2) {
-      // Two seats on the bottom row of the triangle, centred
-      positions.push({ x: cx - p / 2, y: apexY, seatIdx: seatIdx++ });
-      positions.push({ x: cx + p / 2, y: apexY, seatIdx: seatIdx++ });
-    } else {
-      // rem === 3: apex seat on top, two seats one row below
-      positions.push({ x: cx,         y: apexY,     seatIdx: seatIdx++ });
-      positions.push({ x: cx - p / 2, y: apexY + p * Math.sqrt(3) / 2, seatIdx: seatIdx++ });
-      positions.push({ x: cx + p / 2, y: apexY + p * Math.sqrt(3) / 2, seatIdx: seatIdx++ });
+    // ── Tail positions (tangential extension from arc endpoints) ─────────────
+    // Each tail is R columns wide (matching arc rows), extending in the tangent
+    // direction from the arc endpoint. Column c uses radius r0+c*dr.
+    // Left tail: from (cx+r*cos(arcStart), cy+r*sin(arcStart)), going in leftTangentDir.
+    // Right tail: from (cx+r*cos(arcEnd), cy+r*sin(arcEnd)), going in rightTangentDir.
+    if (tailTotal > 0) {
+      const leftSeats = [], rightSeats = [];
+      for (let c = 0; c < R; c++) {
+        const r    = r0 + c * dr;
+        const lx0  = cx + r * Math.cos(arcStart);
+        const ly0  = cy + r * Math.sin(arcStart);
+        const rx0  = cx + r * Math.cos(arcEnd);
+        const ry0  = cy + r * Math.sin(arcEnd);
+        const ldx  = Math.cos(leftTangentDir);
+        const ldy  = Math.sin(leftTangentDir);
+        const rdx  = Math.cos(rightTangentDir);
+        const rdy  = Math.sin(rightTangentDir);
+        const lRem = tailLeft  - leftSeats.length;
+        const rRem = tailRight - rightSeats.length;
+        const lIn  = Math.ceil(lRem / (R - c));
+        const rIn  = Math.ceil(rRem / (R - c));
+        for (let k = 0; k < lIn && leftSeats.length  < tailLeft;  k++)
+          leftSeats.push({ x: lx0 + (k+1)*dr*ldx, y: ly0 + (k+1)*dr*ldy });
+        for (let k = 0; k < rIn && rightSeats.length < tailRight; k++)
+          rightSeats.push({ x: rx0 + (k+1)*dr*rdx, y: ry0 + (k+1)*dr*rdy });
+      }
+      for (const pt of leftSeats)  pos.push({ ...pt, seatIdx: si++ });
+      for (const pt of rightSeats) pos.push({ ...pt, seatIdx: si++ });
     }
+
+    bestPositions = pos;
   }
+
+  const positions = bestPositions || [];
+  const dotR      = bestDr * 0.44;
 
   // ── Draw ───────────────────────────────────────────────────────────────────
   function isHighlighted(seat) {
@@ -250,6 +290,9 @@ function renderParliament() {
   function seatColor(seat) {
     return parlTab === 'intl' ? seat.intlColor : seat.color;
   }
+  function dimmedSeatColor() {
+    return isDark() ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.12)';
+  }
 
   for (const highlighted of [false, true]) {
     for (const pos of positions) {
@@ -257,9 +300,16 @@ function renderParliament() {
       if (!seat) continue;
       const hi = isHighlighted(seat);
       if (hi !== highlighted) continue;
+      // Draw hexagonal seat (flat-top orientation)
       ctx.beginPath();
-      ctx.arc(pos.x, pos.y, dotR, 0, Math.PI * 2);
-      ctx.fillStyle = hi ? seatColor(seat) : 'rgba(255,255,255,0.07)';
+      for (let h = 0; h < 6; h++) {
+        const ha = Math.PI / 180 * (60 * h);   // flat-top: 0° = right
+        const hx = pos.x + dotR * Math.cos(ha);
+        const hy = pos.y + dotR * Math.sin(ha);
+        h === 0 ? ctx.moveTo(hx, hy) : ctx.lineTo(hx, hy);
+      }
+      ctx.closePath();
+      ctx.fillStyle = hi ? seatColor(seat) : dimmedSeatColor();
       ctx.fill();
     }
   }
