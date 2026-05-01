@@ -1,9 +1,6 @@
 // ── Global map state ───────────────────────────────────────────────────────────
-const tState = {};
-let selParty   = null;
 let origColors = null;
 let GRID_COLS  = 0, GRID_ROWS = 0;
-let territoryCount = 0;
 
 const canvas  = document.getElementById('map-canvas');
 const ctx     = canvas.getContext('2d');
@@ -123,7 +120,6 @@ function processImage(img) {
   GRID_COLS = NW; GRID_ROWS = NH;
   origColors = [];
   const uniqueHex = new Set();
-  Object.keys(tState).forEach(k => delete tState[k]);
 
   for (let row = 0; row < NH; row++) {
     origColors[row] = [];
@@ -150,12 +146,122 @@ function processImage(img) {
     }
   }
 
-  territoryCount = uniqueHex.size;
   setStatus('');
   computeLayout(); renderResults(); render();
 }
 
 // ── Map render ─────────────────────────────────────────────────────────────────
+function zoneSeats(zone) {
+  if (!zone) return [];
+  return (window.SEATS || []).filter(seat => seat.constituency === zone.constituency);
+}
+
+function partyByShort(short) {
+  return PARTIES.find(p => p.short === short) || null;
+}
+
+function topSeatParty(zone) {
+  const counts = {};
+  zoneSeats(zone).forEach(seat => {
+    if (!seat.short) return;
+    counts[seat.short] = (counts[seat.short] || 0) + 1;
+  });
+  let bestShort = null, bestCount = 0;
+  Object.entries(counts).forEach(([short, count]) => {
+    if (count > bestCount) { bestShort = short; bestCount = count; }
+  });
+  return bestShort ? partyByShort(bestShort) : null;
+}
+
+function topSeatGroup(zone) {
+  const counts = {};
+  const colors = {};
+  zoneSeats(zone).forEach(seat => {
+    if (!seat.grp) return;
+    counts[seat.grp] = (counts[seat.grp] || 0) + 1;
+    if (!colors[seat.grp]) colors[seat.grp] = seat.intlColor;
+  });
+  let bestGroup = null, bestCount = 0;
+  Object.entries(counts).forEach(([group, count]) => {
+    if (count > bestCount) { bestGroup = group; bestCount = count; }
+  });
+  if (!bestGroup) return null;
+  const groupInfo = (window.GROUPS || {})[bestGroup];
+  return { key: bestGroup, color: groupInfo ? groupInfo.color : colors[bestGroup] };
+}
+
+function groupColor(groupKey) {
+  const group = (window.GROUPS || {})[groupKey];
+  if (group) return group.color;
+  const party = PARTIES.find(p => p.grp === groupKey);
+  return party ? party.color : null;
+}
+
+function groupVoteShare(zone, groupKey) {
+  let pct = 0;
+  Object.entries(zone.votes || {}).forEach(([short, vote]) => {
+    const party = partyByShort(short);
+    if (party && party.grp === groupKey) pct += vote;
+  });
+  return Math.max(0, Math.min(1, pct));
+}
+
+function hexToRgb(hexColor) {
+  if (!/^#[0-9a-fA-F]{6}$/.test(hexColor || '')) return null;
+  return {
+    r: parseInt(hexColor.slice(1,3), 16),
+    g: parseInt(hexColor.slice(3,5), 16),
+    b: parseInt(hexColor.slice(5,7), 16)
+  };
+}
+
+function rgbToHex({r, g, b}) {
+  return '#' + [r, g, b].map(v => {
+    const n = Math.max(0, Math.min(255, Math.round(v)));
+    return n.toString(16).padStart(2, '0');
+  }).join('');
+}
+
+function colourWithOpacityOverBase(baseColor, overlayColor, alpha) {
+  const base = hexToRgb(baseColor);
+  const overlay = hexToRgb(overlayColor);
+  if (!base || !overlay) return FILL_UNASSIGNED();
+  return rgbToHex({
+    r: base.r + (overlay.r - base.r) * alpha,
+    g: base.g + (overlay.g - base.g) * alpha,
+    b: base.b + (overlay.b - base.b) * alpha
+  });
+}
+
+function heatmapColor(baseColor, pct) {
+  const alpha = Math.max(0, Math.min(1, pct / 0.51));
+  if (!baseColor || alpha <= 0) return FILL_UNASSIGNED();
+  return colourWithOpacityOverBase(FILL_UNASSIGNED(), baseColor, alpha);
+}
+
+function zoneFillColor(zone) {
+  if (!zone) return FILL_UNASSIGNED();
+
+  const pf = window.PARL_FILTER;
+  if (pf && pf.value !== null) {
+    if (pf.tab === 'party') {
+      const party = partyByShort(pf.value);
+      return heatmapColor(party ? party.color : null, zone.votes ? zone.votes[pf.value] || 0 : 0);
+    }
+    if (pf.tab === 'intl') {
+      return heatmapColor(groupColor(pf.value), groupVoteShare(zone, pf.value));
+    }
+  }
+
+  if (parlTab === 'intl') {
+    const group = topSeatGroup(zone);
+    return group ? group.color : FILL_UNASSIGNED();
+  }
+
+  const party = topSeatParty(zone);
+  return party ? party.color : FILL_UNASSIGNED();
+}
+
 function render() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = MAP_BG();
@@ -201,7 +307,7 @@ function render() {
     for (const [hexColor, startMap] of Object.entries(dirEdges)) {
       const displayMap = (parlTab === 'intl') ? window.ZONE_DISPLAY_INTL : window.ZONE_DISPLAY;
       const zd = displayMap && displayMap[hexColor];
-      const fillColor = zd ? zd.color : FILL_UNASSIGNED();
+      const fillColor = zd ? zoneFillColor(zd.zone) : FILL_UNASSIGNED();
 
       const remaining = {};
       for (const [k, arr] of Object.entries(startMap)) remaining[k] = [...arr];
@@ -239,26 +345,12 @@ function render() {
 
   // ── Pass 1b: parliament filter overlay ────────────────────────────────────
   const pf = window.PARL_FILTER;
-  if (pf && pf.value !== null && window._territoryLoops) {
+  if (pf && pf.tab === 'nation' && pf.value !== null && window._territoryLoops) {
     const matchColors = new Set();
 
-    if (pf.tab === 'party' || pf.tab === 'nation') {
-      (window.ZONES || []).forEach(zone => {
-        if (!zone.color) return;
-        let match = false;
-        if (pf.tab === 'party')  match = zone.winner === pf.value;
-        if (pf.tab === 'nation') match = zone.region === pf.value;
-        if (match) matchColors.add(zone.color);
-      });
-    } else if (pf.tab === 'intl') {
-      const matchProvinces = new Set();
-      (window.SEATS || []).forEach(seat => {
-        if (seat.intlGrp === pf.value) matchProvinces.add(seat.province);
-      });
-      (window.ZONES || []).forEach(zone => {
-        if (zone.color && matchProvinces.has(zone.name)) matchColors.add(zone.color);
-      });
-    }
+    (window.ZONES || []).forEach(zone => {
+      if (zone.color && zone.region === pf.value) matchColors.add(zone.color);
+    });
 
     ctx.save();
     for (const [hexColor, loops] of Object.entries(window._territoryLoops)) {
@@ -358,50 +450,9 @@ function render() {
   }
 }
 
-// ── URL-based image loading ────────────────────────────────────────────────────
-function loadFromURL() {
-  const url = document.getElementById('url-input').value.trim();
-  if (!url) return;
-  setStatus('loading…');
-  const img = new Image();
-  img.crossOrigin = 'anonymous';
-  img.onload  = () => processImage(img);
-  img.onerror = () => {
-    const i2 = new Image();
-    i2.onload  = () => processImage(i2);
-    i2.onerror = () => setStatus('load failed', true);
-    i2.src = url;
-  };
-  img.src = url;
-}
-
-// ── Territory assignment ───────────────────────────────────────────────────────
-function assignTerritory(hex, pid) {
-  if (pid === null) delete tState[hex]; else tState[hex] = pid;
-  renderResults(); render();
-}
-
-function clearAll() {
-  Object.keys(tState).forEach(k => delete tState[k]);
-  renderResults(); render();
-}
-
 // ── Map interaction events ─────────────────────────────────────────────────────
-canvas.addEventListener('click', function(e) {
-  const rect = canvas.getBoundingClientRect();
-  const hit  = toGrid(e.clientX - rect.left, e.clientY - rect.top);
-  if (!hit) return;
-  const hex = origColors[hit.row] && origColors[hit.row][hit.col];
-  if (hex) assignTerritory(hex, selParty);
-});
-
 canvas.addEventListener('contextmenu', function(e) {
   e.preventDefault();
-  const rect = canvas.getBoundingClientRect();
-  const hit  = toGrid(e.clientX - rect.left, e.clientY - rect.top);
-  if (!hit) return;
-  const hex = origColors[hit.row] && origColors[hit.row][hit.col];
-  if (hex) assignTerritory(hex, null);
 });
 
 canvas.addEventListener('wheel', function(e) {
@@ -422,8 +473,3 @@ canvas.addEventListener('mousedown', e => {
 window.addEventListener('mousemove', e => { if (panning) { panX = panX0 + e.clientX - px0; panY = panY0 + e.clientY - py0; render(); } });
 window.addEventListener('mouseup',   () => { panning = false; });
 window.addEventListener('resize',    () => { computeLayout(); render(); });
-
-document.getElementById('url-input').addEventListener('keydown', e => { if (e.key === 'Enter') loadFromURL(); });
-
-
-

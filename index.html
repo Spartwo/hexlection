@@ -12,21 +12,14 @@
   <div id="body">
     <div id="map-wrap">
       <canvas id="map-canvas"></canvas>
-      <div id="url-bar">
-        <input id="url-input" type="text" value="" placeholder="https://...">
-        <span id="url-status"></span>
-      </div>
-    </div>
-    <div id="sidebar">
-      <div id="results-list"></div>
-      <button id="edit-btn"></button>
+      <span id="url-status"></span>
     </div>
   </div>
   <div id="right-col">
     <div id="parliament">
       <div id="parl-tabs">
         <button class="ptab active" data-tab="party">Party</button>
-        <button class="ptab" data-tab="intl">Intl. Group</button>
+        <button class="ptab" data-tab="intl">Group</button>
       </div>
       <div id="parl-canvas-wrap"><canvas id="parl-canvas"></canvas></div>
     </div>
@@ -54,7 +47,7 @@
           <label for="script-url-input">Apps Script URL</label>
           <input id="script-url-input" type="url" spellcheck="false"
                  placeholder="https://script.google.com/macros/s/.../exec">
-          <p class="settings-hint">Paste the deployment URL of your Google Apps Script. It must serve JSON for the sheets: <em>Election, Parties, Zones, Groups</em>.</p>
+          <p class="settings-hint">Paste the deployment URL of your Google Apps Script. It must serve JSON for the sheets: <em>Election, Parties, Zones, Groups, Results</em>.</p>
         </div>
         <div class="sfield-row">
           <button id="settings-reset" class="sbtn-ghost">Reset to default</button>
@@ -78,24 +71,14 @@
     <button id="settings-close" title="Close">X</button>
   </div>
 </div>
-<div id="modal-overlay">
-  <div id="modal">
-    <h2>Edit Parties</h2>
-    <div id="party-edit-list"></div>
-    <button id="add-party-btn" onclick="addParty()">+ Add party</button>
-    <div id="modal-footer">
-      <button id="modal-cancel" onclick="closeModal()">Cancel</button>
-      <button id="modal-save" onclick="saveModal()">Save</button>
-    </div>
-  </div>
-</div>
-
 <div id="tip">
   <div class="tn" id="t-name"></div>
-  <div class="tregion" id="t-region"></div>
+  <div class="tregion-row">
+    <span class="tregion" id="t-region"></span>
+    <span class="tturnout" id="t-turnout"></span>
+  </div>
   <div class="thexgrid" id="t-hexgrid"></div>
   <div class="tvotes" id="t-votes"></div>
-  <div style="display:none" id="t-party"><div id="t-psw"></div><span id="t-pname"></span></div>
 </div>
 
 <!--
@@ -161,6 +144,7 @@
     localStorage.setItem('theme', theme);
     applyThemeButtons();
     render(); // repaint canvas with new bg/stroke colours
+    renderParliament(); // repaint parliament with theme-aware empty seat colours
   }
   function applyThemeButtons() {
     const current = localStorage.getItem('theme') || 'dark';

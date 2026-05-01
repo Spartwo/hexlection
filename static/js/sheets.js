@@ -12,6 +12,15 @@ async function fetchSheet(sheetName) {
   return res.json();
 }
 
+async function fetchOptionalSheet(sheetName) {
+  try {
+    return await fetchSheet(sheetName);
+  } catch (err) {
+    console.warn('Optional sheet unavailable:', sheetName, err);
+    return [];
+  }
+}
+
 function cell(row, key) {
   if (!row || !key || row[key] === undefined || row[key] === null) return '';
   return String(row[key]).trim();
@@ -44,18 +53,17 @@ async function loadFromSheet() {
   parlFilter         = null;
   window.PARL_FILTER = { tab: parlTab, value: null };
   window.HOVERED_HEX = null;
-  selParty           = null;
   origColors         = null;
   window._territoryLoops = {};
-  Object.keys(tState).forEach(k => delete tState[k]);
   render();
 
   try {
-    const [electionRows, partyRows, zoneRows, groupsRaw] = await Promise.all([
+    const [electionRows, partyRows, zoneRows, groupsRaw, resultRows] = await Promise.all([
       fetchSheet('Election'),
       fetchSheet('Parties'),
       fetchSheet('Zones'),
-      fetchSheet('Groups'),
+      fetchOptionalSheet('Groups'),
+      fetchOptionalSheet('Results'),
     ]);
 
     // ── 1. Image URL from Election!B2 ─────────────────────────────────────────
@@ -86,16 +94,16 @@ async function loadFromSheet() {
       const summaryKey = keys.find(k => /summary|desc/i.test(k));
       const hexKey     = keys.find(k => /hex|colour|color/i.test(k));
       const nationKey  = keys.find(k => /nation|country/i.test(k));
-      const intlKey    = keys.find(k => k.trim() === 'International Group') || keys.find(k => /intl|international/i.test(k));
+      const intlKey    = keys.find(k => /group/i.test(k));
 
       const name    = cell(row, nameKey);
       const short   = cell(row, shortKey);
       const summary = summaryKey ? cell(row, summaryKey) : '';
       const rawHex  = hexKey ? cell(row, hexKey).replace(/^#/, '') : '';
       const nation  = nationKey ? cell(row, nationKey) : '';
-      const intlGrp = intlKey  ? cell(row, intlKey) : '';
+      const grp = intlKey  ? cell(row, intlKey) : '';
       const color   = /^[0-9a-fA-F]{6}$/.test(rawHex) ? '#' + rawHex : '#888888';
-      return { id: 'p' + i, name, short, summary, color, nation, intlGrp };
+      return { id: 'p' + i, name, short, summary, color, nation, grp };
     }).filter(p => p.name);
 
     const partyByShort = {};
@@ -108,14 +116,15 @@ async function loadFromSheet() {
     const findKey = (patterns, fallbackIdx) => findObjectKey(zoneKeys, patterns, fallbackIdx);
 
     const regionKey  = findKey(['region','zone'],        0);
-    const nameKey    = findKey(['province','name'],      1);
+    const constituencyKey = findKey(['constituency','name'], 1);
+    const popKey     = findKey(['pop'],                  2);
     const seatsKey   = findKey(['seats'],                4);
     const hexKey     = findKey(['hex','colour','color'], 5);
     const turnoutKey = findKey(['turnout'],              6);
 
     const FIXED_KEYS = new Set(
-      [regionKey, nameKey, seatsKey, hexKey, turnoutKey,
-       findKey(['pop'],2), findKey(['appor'],3)]
+      [regionKey, constituencyKey, seatsKey, hexKey, turnoutKey,
+       popKey, findKey(['appor'],3)]
       .filter(Boolean).map(k => k.trim())
     );
 
@@ -123,11 +132,12 @@ async function loadFromSheet() {
 
     window.ZONES = zoneRows.map((row, i) => {
       const region  = cell(row, regionKey);
-      const name    = cell(row, nameKey);
+      const constituency = cell(row, constituencyKey);
       const seats   = Math.max(0, Math.floor(parseNumberValue(row[seatsKey], 1))) || 1;
       const rawHex  = cell(row, hexKey).replace(/^#/, '');
       const color   = /^[0-9a-fA-F]{6}$/.test(rawHex) ? '#' + rawHex.toLowerCase() : null;
       const turnout = parseVoteShare(row[turnoutKey]);
+      const pop     = parseNumberValue(row[popKey], 0);
 
       const votes = {};
       let winner = null, winPct = 0;
@@ -138,25 +148,27 @@ async function loadFromSheet() {
         if (pct > winPct) { winPct = pct; winner = short; }
       });
 
-      return { id: 'z' + i, region, name, seats, color, votes, winner, winPct, turnout };
-    }).filter(z => z.name);
+      return {
+        id: 'z' + i,
+        region,
+        constituency,
+        name: constituency,
+        seats,
+        color,
+        votes,
+        winner,
+        winPct,
+        turnout,
+        pop
+      };
+    }).filter(z => z.constituency);
 
-    // ── 4a. ZONE_DISPLAY — party colour blended by margin strength ────────────
-    const numParties = voteKeys.length || 1;
-    const floor      = 1 / numParties;
-    const ceil       = 0.70;
-
+    // Keep a colour-keyed zone lookup for map hit testing/rendering.
     window.ZONE_DISPLAY = {};
     window.ZONES.forEach(zone => {
       if (!zone.color) return;
       const party = zone.winner ? partyByShort[zone.winner] : null;
-      if (!party) {
-        window.ZONE_DISPLAY[zone.color] = { color: FILL_UNASSIGNED(), party: null, zone };
-        return;
-      }
-      const strength = Math.max(0, Math.min(1, (zone.winPct - floor) / (ceil - floor)));
-      window.ZONE_DISPLAY[zone.color] = { color: blendToWhite(party.color, strength), party, zone };
-      tState[zone.color] = party.id;
+      window.ZONE_DISPLAY[zone.color] = { color: FILL_UNASSIGNED(), party, zone };
     });
 
     // ── 4b. Groups sheet ──────────────────────────────────────────────────────
@@ -182,24 +194,12 @@ async function loadFromSheet() {
     window.ZONES.forEach(zone => {
       if (!zone.color) return;
       const party = zone.winner ? partyByShort[zone.winner] : null;
-      const group = party && party.intlGrp ? (window.GROUPS || {})[party.intlGrp] : null;
-      if (!party) {
-        window.ZONE_DISPLAY_INTL[zone.color] = { color: FILL_UNASSIGNED(), party: null, zone };
-        return;
-      }
-      const strength = Math.max(0, Math.min(1, (zone.winPct - floor) / (ceil - floor)));
-      window.ZONE_DISPLAY_INTL[zone.color] = {
-        color: blendToWhite(group ? group.color : party.color, strength),
-        party, zone
-      };
+      window.ZONE_DISPLAY_INTL[zone.color] = { color: FILL_UNASSIGNED(), party, zone };
     });
 
     // ── 5. Boot UI ────────────────────────────────────────────────────────────
-    buildPartyBar();
-    selParty = PARTIES[0] ? PARTIES[0].id : null;
-    buildSeats();
+    buildSeats(resultRows);
     renderResults();
-    buildParlLegend();
     renderParliament();
     render(); // paint zone colours now that ZONE_DISPLAY is ready
 
