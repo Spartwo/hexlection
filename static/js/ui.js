@@ -160,6 +160,7 @@ function _resultRow(color, name, count, displayVal, shortKey, tabKey) {
     });
     row.addEventListener('click', () => {
       window.PARL_HOVER = null; // clear hover before rebuild so it doesn't persist on new DOM
+      document.getElementById('results-list-main').classList.remove('is-hovering');
       if (typeof toggleResultsFilter === 'function') toggleResultsFilter(shortKey, tabKey);
       renderResults();
     });

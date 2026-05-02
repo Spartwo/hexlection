@@ -87,8 +87,17 @@ function buildSeats(resultRows = []) {
     return;
   }
 
+  const partyByShortMap = {};
+  PARTIES.forEach(p => { if (p.short) partyByShortMap[p.short] = p; });
+
   zones.forEach(zone => {
-    if (zone.seats) pushEmptySeats(zone, zone.seats);
+    if (!zone.seats) return;
+    const winner = zone.winner ? partyByShortMap[zone.winner] : null;
+    if (winner) {
+      for (let i = 0; i < zone.seats; i++) pushSeat(winner, winner.short, zone);
+    } else {
+      pushEmptySeats(zone, zone.seats);
+    }
   });
 
   sortSeats();
@@ -268,17 +277,34 @@ function renderParliament() {
     }
 
     const bb   = bbox(dr_u, R);
-    const rMaxW = bb.w > 0 ? (W/2 - PAD) / (bb.w / 2) : Infinity;
-    const rMaxH = bb.h > 1e-6 ? (H - PAD*2) / bb.h : (H - PAD*2) / Math.max(1, (R - 1) * dr_u + dr_u);
-    const rMax  = Math.min(rMaxW, rMaxH) * 0.94;
+    // dotR = dr * 0.44 = dr_u * rMax * 0.44.  We want dotR <= BUF on every
+    // side, so solve for rMax first without the dot offset, then subtract
+    // the dot extent from available space and recompute.
+    const EDGE  = PAD + 4;  // fixed pixel buffer between dot edge and box edge
+    const DOT_K = 0.44;     // dot radius = dr * DOT_K
+    // Available interior after fixed edge buffer (dot centres must stay inside)
+    const availW = W - 2 * EDGE;
+    const availH = H - 2 * EDGE;
+    // rMax must satisfy: rMax * bb.w/2 + rMax*dr_u*DOT_K <= availW/2
+    //                    rMax * bb.h   + rMax*dr_u*DOT_K*2 <= availH
+    // => rMax <= availW/2 / (bb.w/2 + dr_u*DOT_K)
+    // => rMax <= availH   / (bb.h   + dr_u*DOT_K*2)
+    const rMaxW = bb.w > 0
+      ? (availW / 2) / (bb.w / 2 + dr_u * DOT_K)
+      : (availW / 2) / (dr_u * DOT_K || 1);
+    const rMaxH = bb.h > 1e-6
+      ? availH / (bb.h + dr_u * DOT_K * 2)
+      : availH / Math.max(dr_u * DOT_K * 2, (R - 1) * dr_u + dr_u);
+    const rMax  = Math.min(rMaxW, rMaxH);
     if (rMax <= 0) continue;
     const dr   = dr_u * rMax;
     const r0   = r0_u * rMax;
+    const dotR_px = dr * DOT_K;
     const cx   = W / 2;
-    // For flat (0° arc) layouts centre vertically; for arcs pin the top to PAD.
+    // For flat (0° arc) layouts centre vertically; for arcs pin the top to PAD+dotR.
     const cy   = arcSweep === 0
       ? H / 2 - rMax * ((bb.minY + bb.maxY) / 2)
-      : PAD + rMax * (-bb.minY);
+      : EDGE + dotR_px + rMax * (-bb.minY);
 
     if (dr <= bestDr) continue;
     bestDr = dr;

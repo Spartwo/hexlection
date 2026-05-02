@@ -44,8 +44,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:"DM San
 .rrow:last-child{border-bottom:none}
 .rsw{width:10px;height:10px;border-radius:2px;flex-shrink:0}
 .rname{flex:1;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rcount{font-family:"DM Mono",monospace;font-size:12px;font-weight:600;color:var(--text);min-width:30px;text-align:right}
+.rcount{font-family:"DM Mono",monospace;font-size:12px;font-weight:600;color:var(--muted);min-width:30px;text-align:right}
 .rrow.has .rname{color:var(--text)}
+.rrow.has .rcount{color:var(--text)}
 .rrow[style*="cursor"]:hover{background:rgba(255,255,255,0.04)}
 [data-theme="light"] .rrow[style*="cursor"]:hover{background:rgba(0,0,0,0.04)}
 
@@ -64,17 +65,18 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:"DM San
 .rrow:last-child{border-bottom:none}
 .rsw{width:10px;height:26px;border-radius:2px;flex-shrink:0}
 .rname{flex:1;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
-.rcount{font-family:"DM Mono",monospace;font-size:13px;font-weight:600;color:var(--text);min-width:30px;text-align:right}
+.rcount{font-family:"DM Mono",monospace;font-size:13px;font-weight:600;color:var(--muted);min-width:30px;text-align:right}
 /* Dim all rows when any row or arc segment is hovered; keep the hovered/active row bright */
 #results-list-main.is-hovering .rrow:not(:hover):not(.arc-hover):not(.focused) .rname,
 #results-list-main.is-hovering .rrow:not(:hover):not(.arc-hover):not(.focused) .rcount { opacity: 0.3; }
 #results-list-main.is-hovering .rrow:hover .rname,
 #results-list-main.is-hovering .rrow:hover .rcount { opacity: 1; }
 .rrow.has .rname{color:var(--text)}
+.rrow.has .rcount{color:var(--text)}
 .rrow[style*="cursor"]:hover{background:rgba(255,255,255,0.04)}
 .rrow.arc-hover{background:rgba(255,255,255,0.025)}
 .rrow.focused{background:rgba(255,255,255,0.09)}
-.rrow.focused .rname{color:var(--text);font-weight:500}
+
 [data-theme="light"] .rrow[style*="cursor"]:hover{background:rgba(0,0,0,0.04)}
 [data-theme="light"] .rrow.arc-hover{background:rgba(0,0,0,0.02)}
 [data-theme="light"] .rrow.focused{background:rgba(0,0,0,0.07)}

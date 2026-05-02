@@ -258,8 +258,8 @@ function zoneFillColor(zone) {
     return group ? group.color : FILL_UNASSIGNED();
   }
 
-  const party = topSeatParty(zone);
-  return party ? party.color : FILL_UNASSIGNED();
+  // Default (party tab, no filter): turnout choropleth
+  return turnoutFillColor(zone.turnout);
 }
 
 function render() {
@@ -384,8 +384,8 @@ function render() {
 
   // ── Pass 2: edges ─────────────────────────────────────────────────────────
   const seen = new Set();
-  const internal  = [];
-  const boundary  = [];
+  const internal = [];
+  const boundary = [];
 
   for (let col = 0; col < GRID_COLS; col++) {
     for (let row = 0; row < GRID_ROWS; row++) {
