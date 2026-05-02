@@ -16,6 +16,7 @@
       <span id="url-status"></span>
     </div>
   </div>
+  <div id="col-drag-handle"></div>
   <div id="right-col">
     <div id="parliament">
       <div id="parl-tabs">
@@ -219,5 +220,56 @@
 })();
 </script>
 
+<script>
+// ── Column drag handle ────────────────────────────────────────────────────
+(function() {
+  const handle  = document.getElementById('col-drag-handle');
+  const app     = document.getElementById('app');
+  const MIN_W   = 260;   // minimum right-col width px
+  const MAX_W   = 600;   // maximum right-col width px
+  const HANDLE_W = 5;
+
+  let dragging = false, startX = 0, startColW = 380;
+
+  function getRightWidth() {
+    const cols = getComputedStyle(app).gridTemplateColumns.split(' ');
+    // cols = ["<map>px", "5px", "<right>px"]
+    return parseFloat(cols[2]) || startColW;
+  }
+
+  function setRightWidth(w) {
+    w = Math.max(MIN_W, Math.min(MAX_W, Math.round(w)));
+    app.style.gridTemplateColumns = '1fr ' + HANDLE_W + 'px ' + w + 'px';
+    // Re-render parliament so it reflows to the new width
+    if (typeof renderParliament === 'function') renderParliament();
+    if (typeof render           === 'function') render();
+  }
+
+  handle.addEventListener('mousedown', function(e) {
+    e.preventDefault();
+    dragging   = true;
+    startX     = e.clientX;
+    startColW  = getRightWidth();
+    handle.classList.add('dragging');
+    document.body.style.cursor    = 'col-resize';
+    document.body.style.userSelect = 'none';
+  });
+
+  document.addEventListener('mousemove', function(e) {
+    if (!dragging) return;
+    // Dragging left = bigger right col, dragging right = smaller
+    const delta = startX - e.clientX;
+    setRightWidth(startColW + delta);
+  });
+
+  document.addEventListener('mouseup', function() {
+    if (!dragging) return;
+    dragging = false;
+    handle.classList.remove('dragging');
+    document.body.style.cursor     = '';
+    document.body.style.userSelect = '';
+  });
+})();
+</script>
 </body>
 </html>
