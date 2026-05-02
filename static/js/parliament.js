@@ -336,8 +336,10 @@ function renderParliament() {
     const leftDepth  = leftLanes.reduce((m,l) => Math.max(m, l.length), 0);
     const rightDepth = rightLanes.reduce((m,l) => Math.max(m, l.length), 0);
 
-    // Left tail: c=R-1..0 within each depth row (outermost=leftmost lane first).
-    for (let k = 0; k < leftDepth; k++)
+    // Left tail: depth-first from far end inward (k=leftDepth-1..0) so the row
+    // closest to the arc gets the highest seatIdx values, matching the arc's
+    // left-to-right party ordering flowing continuously into the tail.
+    for (let k = leftDepth - 1; k >= 0; k--)
       for (let c = R - 1; c >= 0; c--)
         if (k < leftLanes[c].length)
           pos.push({ ...leftLanes[c][k], seatIdx: si++ });
@@ -367,9 +369,9 @@ function renderParliament() {
       }
     }
 
-    // Right tail: c=0..R-1 within each depth row (left to right).
+    // Right tail: c=R-1..0 within each depth row (outermost lane first).
     for (let k = 0; k < rightDepth; k++)
-      for (let c = 0; c < R; c++)
+      for (let c = R - 1; c >= 0; c--)
         if (k < rightLanes[c].length)
           pos.push({ ...rightLanes[c][k], seatIdx: si++ });
 
