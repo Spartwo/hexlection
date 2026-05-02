@@ -97,3 +97,27 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:"DM San
 .results-sort-wrap{padding:8px 16px 6px;border-bottom:1px solid var(--border);flex-shrink:0}
 .results-sort-select{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:5px;padding:5px 10px;color:var(--muted);font-family:"DM Sans",sans-serif;font-size:11px;cursor:pointer;outline:none;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%237a7a72'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;transition:border-color .12s,color .12s}
 .results-sort-select:hover,.results-sort-select:focus{border-color:var(--muted);color:var(--text)}
+
+/* ── Hex loading animations ─────────────────────────────────────────────── */
+#map-wrap{position:relative}
+.hex-loader{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:1;transition:opacity .35s;z-index:10}
+.hex-loader.hidden{opacity:0;pointer-events:none}
+.hex-loader-inner{position:relative;width:72px;height:72px}
+
+/* Staggered opacity-only pulse — no transform conflict with SVG positioning */
+@keyframes hex-fade{
+  0%,100%{opacity:.12}
+  50%{opacity:1}
+}
+
+/* Each hex pulses opacity; the surrounding 6 are staggered around the ring.
+   Colours are set via fill in JS using the constituency border colours. */
+.hex-loader-svg path{fill:rgba(255,255,255,0.75)}
+[data-theme="light"] .hex-loader-svg path{fill:rgba(0,0,0,0.75)}
+.hex-loader-svg .h0{animation:hex-fade .8s ease-in-out infinite;animation-delay:0s}
+.hex-loader-svg .h1{animation:hex-fade .8s ease-in-out infinite;animation-delay:.1s}
+.hex-loader-svg .h2{animation:hex-fade .8s ease-in-out infinite;animation-delay:.2s}
+.hex-loader-svg .h3{animation:hex-fade .8s ease-in-out infinite;animation-delay:.3s}
+.hex-loader-svg .h4{animation:hex-fade .8s ease-in-out infinite;animation-delay:.4s}
+.hex-loader-svg .h5{animation:hex-fade .8s ease-in-out infinite;animation-delay:.5s}
+.hex-loader-svg .h6{animation:hex-fade .8s ease-in-out infinite;animation-delay:.6s}

@@ -12,6 +12,7 @@
   <div id="body">
     <div id="map-wrap">
       <canvas id="map-canvas"></canvas>
+      <div id="map-loader" class="hex-loader"><div class="hex-loader-inner"></div></div>
       <span id="url-status"></span>
     </div>
   </div>
@@ -21,7 +22,7 @@
         <button class="ptab active" data-tab="party">Party</button>
         <button class="ptab" data-tab="intl">Group</button>
       </div>
-      <div id="parl-canvas-wrap"><canvas id="parl-canvas"></canvas></div>
+      <div id="parl-canvas-wrap"><canvas id="parl-canvas"></canvas><div id="parl-loader" class="hex-loader"><div class="hex-loader-inner"></div></div></div>
     </div>
     <div id="results-col">
       <div id="results-list-main"></div>
@@ -158,5 +159,65 @@
   // Apply saved theme on boot
   applyTheme(localStorage.getItem('theme') || 'dark');
 </script>
+
+<script>
+// ── Hex loader setup ──────────────────────────────────────────────────────
+(function() {
+  // Build a hex cluster SVG: 1 centre + 6 surrounding hexagons
+  function hexPath(cx, cy, r) {
+    const pts = [];
+    for (let i = 0; i < 6; i++) {
+      const a = Math.PI / 180 * (60 * i - 30);
+      pts.push((cx + r * Math.cos(a)).toFixed(2) + ',' + (cy + r * Math.sin(a)).toFixed(2));
+    }
+    return 'M' + pts.join('L') + 'Z';
+  }
+
+  function makeSVG() {
+    const S = 72, r = 10, gap = r * 2.15;
+    const cx = S / 2, cy = S / 2;
+    // Centre hex + 6 surrounding, starting flat-top (0°)
+    const centres = [];
+    for (let i = 0; i < 6; i++) {
+      const a = Math.PI / 180 * (60 * i);
+      centres.push([cx + gap * Math.cos(a), cy + gap * Math.sin(a)]);
+    }
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', '0 0 ' + S + ' ' + S);
+    svg.setAttribute('width', S);
+    svg.setAttribute('height', S);
+    svg.classList.add('hex-loader-svg');
+    centres.forEach(([x, y], i) => {
+      const path = document.createElementNS(ns, 'path');
+      path.setAttribute('d', hexPath(x, y, r));
+      path.classList.add('h' + i);
+      svg.appendChild(path);
+    });
+    return svg;
+  }
+
+  ['map-loader', 'parl-loader'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      const inner = el.querySelector('.hex-loader-inner');
+      inner.appendChild(makeSVG());
+    }
+  });
+
+  window.showLoaders  = () => {
+    document.getElementById('map-loader')?.classList.remove('hidden');
+    document.getElementById('parl-loader')?.classList.remove('hidden');
+  };
+  window.hideLoaders  = () => {
+    document.getElementById('map-loader')?.classList.add('hidden');
+    document.getElementById('parl-loader')?.classList.add('hidden');
+  };
+
+  // Show immediately on page load
+  window.showLoaders();
+})();
+</script>
+
 </body>
 </html>

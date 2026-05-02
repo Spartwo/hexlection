@@ -47,6 +47,7 @@ function findObjectKey(keys, patterns, fallbackIdx) {
 
 async function loadFromSheet() {
   setStatus('loading sheet…');
+  if (typeof window.showLoaders === 'function') window.showLoaders();
 
   // Reset all stale state so highlights, selections and filters don't
   // bleed across data sources or reloads
@@ -54,8 +55,11 @@ async function loadFromSheet() {
   window.PARL_FILTER = { tab: parlTab, value: null };
   window.HOVERED_HEX = null;
   origColors         = null;
+  window.SEATS       = [];
   window._territoryLoops = {};
   render();
+  if (typeof renderParliament === 'function') renderParliament();
+  if (typeof renderResults    === 'function') renderResults();
 
   try {
     const [electionRows, partyRows, zoneRows, groupsRaw, resultRows] = await Promise.all([
@@ -202,6 +206,7 @@ async function loadFromSheet() {
     renderResults();
     renderParliament();
     render(); // paint zone colours now that ZONE_DISPLAY is ready
+    if (typeof window.hideLoaders === 'function') window.hideLoaders();
 
     // ── 6. Load map image from URL in Election sheet ─────────────────────────
     setStatus('loading image…');
