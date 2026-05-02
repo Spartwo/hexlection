@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hex District Map</title>
+<title>Hexlection</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cstyle%3Epolygon%7Bfill:none;stroke:%23000;stroke-width:2.5%7D @media(prefers-color-scheme:dark)%7Bpolygon%7Bstroke:%23fff%7D%7D%3C/style%3E%3Cpolygon points='16,2 28,9 28,23 16,30 4,23 4,9'/%3E%3C/svg%3E">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="./static/css/styles.css">
 </head>
@@ -47,7 +48,7 @@
         <div class="spanel-title">Data Source</div>
         <div class="sfield">
           <label for="script-url-input">Apps Script URL</label>
-          <input id="script-url-input" type="url" spellcheck="false"
+          <input id="script-url-input" type="url" spellcheck="false" autocomplete="off"
                  placeholder="https://script.google.com/macros/s/.../exec">
           <p class="settings-hint">Paste the deployment URL of your Google Apps Script. It must serve JSON for the sheets: <em>Election, Parties, Zones, Groups, Results</em>.</p>
         </div>
@@ -108,7 +109,8 @@
   const scriptUrlInput  = document.getElementById('script-url-input');
 
   function openSettings() {
-    scriptUrlInput.value = localStorage.getItem('appsScriptUrl') || '';
+    // Show the currently active URL
+    scriptUrlInput.value = getAppsScriptUrl();
     applyThemeButtons();
     settingsOverlay.classList.add('open');
   }
@@ -128,15 +130,34 @@
     });
   });
 
-  // Data source
+  // ── URL helpers ───────────────────────────────────────────────────────────
+  function urlToDeploymentId(url) {
+    const trimmed = (url || '').trim();
+    const prefix = 'https://script.google.com/macros/s/';
+    const suffix = '/exec';
+    if (trimmed.startsWith(prefix) && trimmed.endsWith(suffix)) {
+      return trimmed.slice(prefix.length, trimmed.length - suffix.length);
+    }
+    return trimmed; // might already be just the ID
+  }
+
+  // Data source — save navigates to hashed URL so the address bar is shareable
   document.getElementById('settings-reset').addEventListener('click', () => {
-    scriptUrlInput.value = '';
+    location.assign(location.pathname);
   });
+
   document.getElementById('settings-save').addEventListener('click', () => {
     const val = scriptUrlInput.value.trim();
-    if (val) localStorage.setItem('appsScriptUrl', val);
-    else localStorage.removeItem('appsScriptUrl');
-    closeSettings();
+    const id = val ? urlToDeploymentId(val) : null;
+    if (id) {
+      location.assign('#' + id);
+    } else {
+      location.assign(location.pathname);
+    }
+  });
+
+  // If someone edits the hash manually or follows a shared link in the same tab
+  window.addEventListener('hashchange', () => {
     loadFromSheet();
   });
 

@@ -1,8 +1,19 @@
 // ── Google Sheets integration ──────────────────────────────────────────────────
 const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyqzq7L0IBrq38iEpG2r5u2Z7wJuIx0FlK11F7FFFtneGQqUoqQ_xo2AvjjL7CQfHlO/exec';
+const APPS_SCRIPT_PREFIX = 'https://script.google.com/macros/s/';
+const APPS_SCRIPT_SUFFIX = '/exec';
+
+function deploymentIdFromHash() {
+  const hash = window.location.hash.slice(1).trim();
+  // Accept either a bare deployment ID or a full Apps Script URL pasted into the hash
+  if (!hash) return null;
+  if (hash.startsWith(APPS_SCRIPT_PREFIX)) return hash; // already a full URL
+  if (/^[A-Za-z0-9_-]{20,}$/.test(hash)) return APPS_SCRIPT_PREFIX + hash + APPS_SCRIPT_SUFFIX;
+  return null;
+}
 
 function getAppsScriptUrl() {
-  return localStorage.getItem('appsScriptUrl') || DEFAULT_APPS_SCRIPT_URL;
+  return deploymentIdFromHash() || DEFAULT_APPS_SCRIPT_URL;
 }
 
 async function fetchSheet(sheetName) {
