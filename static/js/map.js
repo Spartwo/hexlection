@@ -253,11 +253,6 @@ function zoneFillColor(zone) {
     }
   }
 
-  if (parlTab === 'intl') {
-    const group = topSeatGroup(zone);
-    return group ? group.color : FILL_UNASSIGNED();
-  }
-
   // Default (party tab, no filter): turnout choropleth
   return turnoutFillColor(zone.turnout);
 }
