@@ -11,6 +11,8 @@ window.ELECTION_CONFIG = window.ELECTION_CONFIG || { arcAngle: 360, rows: 4, tai
 // ── Last-rendered positions for hit testing ────────────────────────────────
 let _parlPositions = [];  // [{ x, y, seatIdx }] in CSS px
 let _parlDotR      = 0;
+let _parlCY        = 0;   // canvas-px Y of the arc centre
+let _parlR0        = 0;   // innermost arc radius in canvas-px
 
 // ── Seat loading from Results sheet ───────────────────────────────────────────
 function buildSeats(resultRows = []) {
@@ -166,125 +168,219 @@ function renderParliament() {
 
   function bbox(dr_u, R) {
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    const steps = 720;
-    for (let k = 0; k <= steps; k++) {
-      const theta = arcStart + arcSweep * k / steps;
-      minX=Math.min(minX,Math.cos(theta)); maxX=Math.max(maxX,Math.cos(theta));
-      minY=Math.min(minY,Math.sin(theta)); maxY=Math.max(maxY,Math.sin(theta));
-    }
-    if (tailTotal > 0 && R > 0) {
-      const tailRows = Math.ceil(Math.max(tailLeft, tailRight) / R);
-      for (let k = 1; k <= tailRows; k++) {
-        const t = k * dr_u;
-        const lx = Math.cos(arcStart) + t * Math.cos(leftTangentDir);
-        const ly = Math.sin(arcStart) + t * Math.sin(leftTangentDir);
-        const rx = Math.cos(arcEnd)   + t * Math.cos(rightTangentDir);
-        const ry = Math.sin(arcEnd)   + t * Math.sin(rightTangentDir);
-        minX=Math.min(minX,lx,rx); maxX=Math.max(maxX,lx,rx);
-        minY=Math.min(minY,ly,ry); maxY=Math.max(maxY,ly,ry);
+
+    if (arcSweep > 0) {
+      // Sample points along the arc itself
+      const steps = 720;
+      for (let k = 0; k <= steps; k++) {
+        const theta = arcStart + arcSweep * k / steps;
+        minX=Math.min(minX,Math.cos(theta)); maxX=Math.max(maxX,Math.cos(theta));
+        minY=Math.min(minY,Math.sin(theta)); maxY=Math.max(maxY,Math.sin(theta));
       }
-      const lx0 = Math.cos(arcStart), ly0 = Math.sin(arcStart);
-      const rx0 = Math.cos(arcEnd),   ry0 = Math.sin(arcEnd);
-      minX=Math.min(minX,lx0-dr_u*(R-1)); maxX=Math.max(maxX,rx0+dr_u*(R-1));
+    } else {
+      // Pure-tail (0° arc): arc start and end coincide at the bottom (arcMid).
+      // Seed the bounding box from that single point so the tail extent dominates.
+      const px = Math.cos(arcStart), py = Math.sin(arcStart);
+      minX = maxX = px; minY = maxY = py;
+    }
+
+    if (effectiveTailTotal > 0 && R > 0) {
+      const tailRows   = Math.ceil(Math.max(effectiveTailLeft, effectiveTailRight) / R);
+      const r0_u_local = 1 - (R - 1) * dr_u;
+      for (let c = 0; c < R; c++) {
+        const r = r0_u_local + c * dr_u;
+        if (r <= 0) continue;
+        const lx0 = r * Math.cos(arcStart), ly0 = r * Math.sin(arcStart);
+        const rx0 = r * Math.cos(arcEnd),   ry0 = r * Math.sin(arcEnd);
+        for (let k = 1; k <= tailRows; k++) {
+          const t = k * dr_u;
+          const lx = lx0 + t * Math.cos(leftTangentDir);
+          const ly = ly0 + t * Math.sin(leftTangentDir);
+          const rx = rx0 + t * Math.cos(rightTangentDir);
+          const ry = ry0 + t * Math.sin(rightTangentDir);
+          minX=Math.min(minX,lx,rx); maxX=Math.max(maxX,lx,rx);
+          minY=Math.min(minY,ly,ry); maxY=Math.max(maxY,ly,ry);
+        }
+        minX=Math.min(minX,lx0,rx0); maxX=Math.max(maxX,lx0,rx0);
+        minY=Math.min(minY,ly0,ry0); maxY=Math.max(maxY,ly0,ry0);
+      }
     }
     return { minX, maxX, minY, maxY, w: maxX-minX, h: maxY-minY };
   }
 
-  let bestPositions = null, bestDr = 0;
+  let bestPositions = null, bestDr = 0, bestCY = H / 2, bestR0 = 0;
   const Rmin = fixedRows > 0 ? fixedRows : 1;
   const Rmax = fixedRows > 0 ? fixedRows : 20;
 
-  for (let R = Rmin; R <= Rmax; R++) {
-    let lo = 0.001, hi = 1.0;
-    for (let iter = 0; iter < 80; iter++) {
-      const dr  = (lo + hi) / 2;
-      const r0  = 1 - (R - 1) * dr;
-      if (r0 <= 0) { hi = dr; continue; }
-      let tot = 0;
-      for (let i = 0; i < R; i++) {
-        const r = r0 + i * dr;
-        tot += Math.max(1, Math.round(r * arcSweep / dr));
-      }
-      if (tot > arcTotal) lo = dr; else hi = dr;
-    }
-    const dr_u = (lo + hi) / 2;
-    const r0_u = 1 - (R - 1) * dr_u;
-    if (r0_u <= 0) continue;
+  // ── Bug fix 3 & 4: when arcTotal === 0 (0° arc or 100% tail) the normal
+  // R-loop collapses because arcSweep/arcTotal is zero.  We bypass it and
+  // size the layout purely from the tail columns needed.
+  // When arcSweep is 0 every seat must live in the tail columns.
+  // Recompute tail totals to include all seats in that case.
+  const effectiveTailTotal = arcSweep === 0 ? n : tailTotal;
+  const effectiveTailLeft  = arcSweep === 0 ? n - Math.floor(n / 2) : tailLeft;
+  const effectiveTailRight = arcSweep === 0 ? Math.floor(n / 2) : tailRight;
+  const effectiveArcTotal  = arcSweep === 0 ? 0 : arcTotal;
 
-    const arcCounts = [];
-    for (let i = 0; i < R; i++) {
-      arcCounts.push(Math.max(1, Math.round((r0_u + i * dr_u) * arcSweep / dr_u)));
+  const pureTail = arcSweep === 0 || (arcTotal === 0 && tailTotal > 0);
+
+  for (let R = Rmin; R <= Rmax; R++) {
+    // ── arc seat counts ────────────────────────────────────────────────────
+    let dr_u, r0_u, arcCounts;
+
+    if (pureTail) {
+      // Size purely by tail depth: tailDepth rows of R lanes.
+      const tailDepth = Math.ceil(Math.max(effectiveTailLeft, effectiveTailRight) / R);
+      dr_u      = 1 / tailDepth;
+      r0_u      = 1;
+      arcCounts = [];
+    } else {
+      let lo = 0.001, hi = 1.0;
+      for (let iter = 0; iter < 80; iter++) {
+        const dr  = (lo + hi) / 2;
+        const r0  = 1 - (R - 1) * dr;
+        if (r0 <= 0) { hi = dr; continue; }
+        let tot = 0;
+        for (let i = 0; i < R; i++) {
+          const r = r0 + i * dr;
+          tot += Math.max(1, Math.round(r * arcSweep / dr));
+        }
+        if (tot > effectiveArcTotal) lo = dr; else hi = dr;
+      }
+      dr_u = (lo + hi) / 2;
+      r0_u = 1 - (R - 1) * dr_u;
+      if (r0_u <= 0) continue;
+
+      arcCounts = [];
+      for (let i = 0; i < R; i++) {
+        arcCounts.push(Math.max(1, Math.round((r0_u + i * dr_u) * arcSweep / dr_u)));
+      }
+      const arcGot = arcCounts.reduce((s,x) => s+x, 0);
+      let residual = effectiveArcTotal - arcGot;
+      // Distribute residual one seat at a time, outermost rows first, cycling
+      // until fully consumed. Never lets any row drop below 1.
+      for (let pass = 0; residual !== 0 && pass < arcTotal; pass++) {
+        const i = (R - 1) - (pass % R);
+        const delta = residual > 0 ? 1 : -1;
+        if (arcCounts[i] + delta >= 1) { arcCounts[i] += delta; residual -= delta; }
+      }
+      if (arcCounts[R-1] < 1) continue;
     }
-    const arcGot = arcCounts.reduce((s,x) => s+x, 0);
-    arcCounts[R-1] += arcTotal - arcGot;
-    if (arcCounts[R-1] < 1) continue;
 
     const bb   = bbox(dr_u, R);
-    const rMax = Math.min((W/2 - PAD) / (bb.w / 2), (H - PAD*2) / bb.h) * 0.94;
+    const rMaxW = bb.w > 0 ? (W/2 - PAD) / (bb.w / 2) : Infinity;
+    const rMaxH = bb.h > 1e-6 ? (H - PAD*2) / bb.h : (H - PAD*2) / Math.max(1, (R - 1) * dr_u + dr_u);
+    const rMax  = Math.min(rMaxW, rMaxH) * 0.94;
     if (rMax <= 0) continue;
     const dr   = dr_u * rMax;
     const r0   = r0_u * rMax;
     const cx   = W / 2;
-    const cy   = PAD + rMax * (-bb.minY);
+    // For flat (0° arc) layouts centre vertically; for arcs pin the top to PAD.
+    const cy   = arcSweep === 0
+      ? H / 2 - rMax * ((bb.minY + bb.maxY) / 2)
+      : PAD + rMax * (-bb.minY);
 
     if (dr <= bestDr) continue;
     bestDr = dr;
+    bestCY = cy;
+    bestR0 = r0;
 
-    const arcGrid = [];
-    for (let i = 0; i < R; i++) {
-      const r = r0 + i * dr, count = arcCounts[i];
-      const row = [];
-      for (let j = 0; j < count; j++) {
-        const t     = isCircle ? j / count : (count === 1 ? 0.5 : j / (count - 1));
-        const theta = arcStart + t * arcSweep;
-        row.push({ x: cx + r * Math.cos(theta), y: cy + r * Math.sin(theta) });
-      }
-      arcGrid.push(row);
+    // ── Tail geometry ──────────────────────────────────────────────────────
+    // The tail grows outward from each arc endpoint along the tangent direction.
+    // We have R lateral lanes. Each lane's root sits perpendicular to the
+    // tangent, spaced dr apart — i.e. shifted radially along the arc endpoint.
+    // Lane 0 = innermost (smallest radius), lane R-1 = outermost, matching
+    // the arc row ordering so seatIdx flows continuously across the full chart.
+    //
+    // Bug 2 fix: seats within each lane stack outward along the tangent (k=1,2,…)
+    // giving vertical columns rather than horizontal rows.
+
+    const ldx = Math.cos(leftTangentDir),  ldy = Math.sin(leftTangentDir);
+    const rdx = Math.cos(rightTangentDir), rdy = Math.sin(rightTangentDir);
+
+    const leftLanes  = [];  // leftLanes[c]  = [{x,y}, …] — lane c, seats outward
+    const rightLanes = [];
+
+    for (let c = 0; c < R; c++) {
+      // Lane root = arc endpoint at the radius of arc row c
+      const r   = r0 + c * dr;
+      const lx0 = cx + r * Math.cos(arcStart);
+      const ly0 = cy + r * Math.sin(arcStart);
+      const rx0 = cx + r * Math.cos(arcEnd);
+      const ry0 = cy + r * Math.sin(arcEnd);
+
+      const lPlaced = leftLanes.reduce( (s,l) => s + l.length, 0);
+      const rPlaced = rightLanes.reduce((s,l) => s + l.length, 0);
+      const lIn     = Math.ceil((effectiveTailLeft  - lPlaced) / (R - c));
+      const rIn     = Math.ceil((effectiveTailRight - rPlaced) / (R - c));
+
+      const lLane = [], rLane = [];
+      // k steps outward from the arc endpoint — vertical stacking
+      for (let k = 1; lLane.length < lIn && lPlaced + lLane.length < effectiveTailLeft;  k++)
+        lLane.push({ x: lx0 + k*dr*ldx, y: ly0 + k*dr*ldy });
+      for (let k = 1; rLane.length < rIn && rPlaced + rLane.length < effectiveTailRight; k++)
+        rLane.push({ x: rx0 + k*dr*rdx, y: ry0 + k*dr*rdy });
+
+      leftLanes.push(lLane);
+      rightLanes.push(rLane);
     }
 
+    // ── Assign seatIdx: left lanes → arc → right lanes ────────────────────
+    // Within the tail, sweep depth-row first (k=1,2,…) with all lanes (c)
+    // in each row, matching how the arc sweeps rows within each angular column.
+    // This makes party colour bands run vertically (column-wise) not horizontally.
     const pos = [];
     let si = 0;
-    const maxCount = arcCounts[R - 1];
-    for (let j = 0; j < maxCount; j++) {
+
+    // Left tail depth: how many rows deep is the deepest lane?
+    const leftDepth  = leftLanes.reduce((m,l) => Math.max(m, l.length), 0);
+    const rightDepth = rightLanes.reduce((m,l) => Math.max(m, l.length), 0);
+
+    // Left tail: c=R-1..0 within each depth row (outermost=leftmost lane first).
+    for (let k = 0; k < leftDepth; k++)
+      for (let c = R - 1; c >= 0; c--)
+        if (k < leftLanes[c].length)
+          pos.push({ ...leftLanes[c][k], seatIdx: si++ });
+
+    // Arc seats — column sweep across the arc
+    if (!pureTail) {
+      const arcGrid = [];
       for (let i = 0; i < R; i++) {
-        const row   = arcGrid[i];
-        const clamp = Math.min(Math.round(j * (row.length - 1) / Math.max(1, maxCount - 1)), row.length - 1);
-        const owner = row.length === 1 ? 0 : Math.round(clamp * (maxCount - 1) / (row.length - 1));
-        if (owner === j) pos.push({ x: row[clamp].x, y: row[clamp].y, seatIdx: si++ });
+        const r = r0 + i * dr, count = arcCounts[i];
+        const row = [];
+        for (let j = 0; j < count; j++) {
+          const t     = isCircle ? j / count : (count === 1 ? 0.5 : j / (count - 1));
+          const theta = arcStart + t * arcSweep;
+          row.push({ x: cx + r * Math.cos(theta), y: cy + r * Math.sin(theta) });
+        }
+        arcGrid.push(row);
+      }
+
+      const maxCount = arcCounts[R - 1];
+      for (let j = 0; j < maxCount; j++) {
+        for (let i = 0; i < R; i++) {
+          const row   = arcGrid[i];
+          const clamp = Math.min(Math.round(j * (row.length - 1) / Math.max(1, maxCount - 1)), row.length - 1);
+          const owner = row.length === 1 ? 0 : Math.round(clamp * (maxCount - 1) / (row.length - 1));
+          if (owner === j) pos.push({ x: row[clamp].x, y: row[clamp].y, seatIdx: si++ });
+        }
       }
     }
 
-    if (tailTotal > 0) {
-      const leftSeats = [], rightSeats = [];
-      for (let c = 0; c < R; c++) {
-        const r    = r0 + c * dr;
-        const lx0  = cx + r * Math.cos(arcStart);
-        const ly0  = cy + r * Math.sin(arcStart);
-        const rx0  = cx + r * Math.cos(arcEnd);
-        const ry0  = cy + r * Math.sin(arcEnd);
-        const ldx  = Math.cos(leftTangentDir);
-        const ldy  = Math.sin(leftTangentDir);
-        const rdx  = Math.cos(rightTangentDir);
-        const rdy  = Math.sin(rightTangentDir);
-        const lRem = tailLeft  - leftSeats.length;
-        const rRem = tailRight - rightSeats.length;
-        const lIn  = Math.ceil(lRem / (R - c));
-        const rIn  = Math.ceil(rRem / (R - c));
-        for (let k = 0; k < lIn && leftSeats.length  < tailLeft;  k++)
-          leftSeats.push({ x: lx0 + (k+1)*dr*ldx, y: ly0 + (k+1)*dr*ldy });
-        for (let k = 0; k < rIn && rightSeats.length < tailRight; k++)
-          rightSeats.push({ x: rx0 + (k+1)*dr*rdx, y: ry0 + (k+1)*dr*rdy });
-      }
-      for (const pt of leftSeats)  pos.push({ ...pt, seatIdx: si++ });
-      for (const pt of rightSeats) pos.push({ ...pt, seatIdx: si++ });
-    }
+    // Right tail: c=0..R-1 within each depth row (left to right).
+    for (let k = 0; k < rightDepth; k++)
+      for (let c = 0; c < R; c++)
+        if (k < rightLanes[c].length)
+          pos.push({ ...rightLanes[c][k], seatIdx: si++ });
 
     bestPositions = pos;
   }
 
-  // Store for hit-testing by mouse events
+  // Store for hit-testing by mouse events and label placement
   _parlPositions = bestPositions || [];
   _parlDotR      = bestDr * 0.44;
+  _parlCY        = bestCY;
+  _parlR0        = bestR0;
 
   const positions = _parlPositions;
   const dotR      = _parlDotR;
@@ -340,13 +436,66 @@ function renderParliament() {
   if (labelSource) {
     const info = _parlLabelInfo(labelSource.tab, labelSource.value);
     if (info && info.count > 0 && info.color) {
-      const labelText = `${info.shortLabel}  ${info.count}`;
-      const fontSize = Math.max(11, Math.min(18, W / 20));
-      ctx.font = `600 ${fontSize}px "DM Sans", sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = info.color;
-      ctx.fillText(labelText, W / 2, H * 0.52);
+      // ── Two-line tooltip: shorthand (bold) + seat count (regular) ──────────
+      // Visual width is fixed at targetW — each line scaled independently.
+      // Gap is a fixed pixel distance between the actual glyph descender of
+      // the name and the actual glyph ascender of the number.
+      const shortText  = info.shortLabel;
+      const countText  = String(info.count);
+      const targetW    = W * 0.09;               // fixed rendered width
+      const baseFontSz = Math.max(11, Math.min(18, W / 20));
+      const gap        = baseFontSz * 0.3;       // fixed inter-glyph gap (px)
+
+      // Measure natural widths at the base size
+      ctx.font = `700 ${baseFontSz}px "DM Sans", sans-serif`;
+      const shortNatW = ctx.measureText(shortText).width || 1;
+
+      ctx.font = `400 ${baseFontSz}px "DM Sans", sans-serif`;
+      const countNatW = ctx.measureText(countText).width || 1;
+
+      // Each line gets its own font size so it fills exactly targetW
+      const shortSz = baseFontSz * (targetW / shortNatW);
+      const countSz = baseFontSz * (targetW / countNatW);
+
+      // Measure actual glyph extents so the gap is between ink edges, not
+      // between baseline-derived em-box edges.
+      ctx.font = `700 ${shortSz}px "DM Sans", sans-serif`;
+      const shortM   = ctx.measureText(shortText);
+      const shortDescent = shortM.actualBoundingBoxDescent ?? shortSz * 0.2;
+
+      ctx.font = `400 ${countSz}px "DM Sans", sans-serif`;
+      const countM   = ctx.measureText(countText);
+      const countAscent  = countM.actualBoundingBoxAscent  ?? countSz * 0.8;
+
+      // Place baselines so: shortBaseline + shortDescent + gap + countAscent = countBaseline
+      // Block top = shortBaseline - shortAscent; block bottom = countBaseline + countDescent.
+      const shortAscent  = shortM.actualBoundingBoxAscent  ?? shortSz * 0.8;
+      const countDescent = countM.actualBoundingBoxDescent ?? countSz * 0.2;
+
+      // ── Vertical placement ─────────────────────────────────────────────────
+      // The gap anchor is the geometric centre of the arc (_parlCY) — this is
+      // the centre of the circle for full circles, and the chord midpoint for
+      // hemicycles (below which the interior is open). Both lines grow away
+      // from this point so the anchor itself never moves between parties.
+      const gapCY = Math.min(
+        Math.max(_parlCY, PAD + shortAscent + shortDescent + gap / 2),
+        H - PAD - countAscent - countDescent - gap / 2
+      );
+      const shortBaseY  = gapCY - gap / 2 - shortDescent;
+      const countBaseY  = gapCY + gap / 2 + countAscent;
+      const cx          = W / 2;
+
+      ctx.textAlign    = 'center';
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillStyle    = info.color;
+
+      // Shorthand — top line
+      ctx.font = `700 ${shortSz}px "DM Sans", sans-serif`;
+      ctx.fillText(shortText, cx, shortBaseY);
+
+      // Seat count — bottom line
+      ctx.font = `400 ${countSz}px "DM Sans", sans-serif`;
+      ctx.fillText(countText, cx, countBaseY);
     }
   }
 }
