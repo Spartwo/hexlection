@@ -48,7 +48,7 @@ function renderResults() {
   const sel = document.getElementById('results-sort-select');
   const sortOptions = isGroup
     ? [['seats','Sort: Seats'],['votes','Sort: Votes']]
-    : [['seats','Sort: Seats'],['votes','Sort: Votes'],['nation','Sort: Nation']];
+    : [['seats','Sort: Seats'],['votes','Sort: Votes']];
 
   // Rebuild options only when the set changes (party↔group switch)
   const existing = Array.from(sel.options).map(o => o.value).join(',');
